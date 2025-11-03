@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -12,11 +12,28 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthAPI from '../services/AuthAPI';
+import BackendHealthAPI from '../services/BackendHealthAPI';
 
 const LoginScreen = ({navigation}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [serverStatus, setServerStatus] = useState('checking');
+
+  // 앱 시작 시 서버 연결 상태 확인
+  useEffect(() => {
+    checkServerConnection();
+  }, []);
+
+  const checkServerConnection = async () => {
+    setServerStatus('checking');
+    const result = await BackendHealthAPI.checkHealth();
+    setServerStatus(result.success ? 'online' : 'offline');
+    
+    if (!result.success) {
+      console.warn('⚠️ 백엔드 서버 연결 실패:', result.error);
+    }
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -104,6 +121,30 @@ const LoginScreen = ({navigation}) => {
               아이디 | 비밀번호 찾기
             </Text>
           </TouchableOpacity>
+
+          {/* 서버 연결 상태 표시 */}
+          <View style={styles.serverStatusContainer}>
+            {serverStatus === 'checking' && (
+              <View style={styles.serverStatus}>
+                <ActivityIndicator size="small" color="#FF9800" />
+                <Text style={styles.serverStatusText}>서버 연결 확인 중...</Text>
+              </View>
+            )}
+            {serverStatus === 'offline' && (
+              <TouchableOpacity 
+                style={styles.serverStatus}
+                onPress={checkServerConnection}>
+                <Text style={[styles.serverStatusText, styles.serverOffline]}>
+                  ⚠️ 서버 연결 실패 (탭하여 재확인)
+                </Text>
+              </TouchableOpacity>
+            )}
+            {serverStatus === 'online' && (
+              <Text style={[styles.serverStatusText, styles.serverOnline]}>
+                ✅ 서버 연결됨
+              </Text>
+            )}
+          </View>
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -183,6 +224,25 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  serverStatusContainer: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  serverStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  serverStatusText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  serverOnline: {
+    color: '#4CAF50',
+  },
+  serverOffline: {
+    color: '#F44336',
   },
 });
 

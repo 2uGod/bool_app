@@ -30,6 +30,17 @@ class AuthAPI {
       return {success: true, user: data.user, token: data.access_token};
     } catch (error) {
       console.error('❌ Register failed:', error);
+      
+      // 네트워크 연결 오류 체크
+      if (error.message.includes('Network request failed') || 
+          error.message.includes('Failed to fetch') ||
+          error.message.includes('ECONNREFUSED')) {
+        return {
+          success: false, 
+          error: `서버에 연결할 수 없습니다.\n\n확인 사항:\n1. 백엔드 서버가 실행 중인지 확인 (포트 3000)\n2. 같은 WiFi 네트워크에 연결되어 있는지 확인\n3. IP 주소가 올바른지 확인 (현재: ${API_BASE_URL})`
+        };
+      }
+      
       return {success: false, error: error.message};
     }
   }
@@ -41,24 +52,59 @@ class AuthAPI {
    */
   static async login(email, password) {
     try {
+      // 이메일 형식 검증
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return {
+          success: false,
+          error: '올바른 이메일 형식을 입력해주세요. (예: user@example.com)'
+        };
+      }
+
+      // 요청 본문 - email과 password만 포함 (username 제거)
+      const requestBody = {
+        email: email.trim().toLowerCase(), // 공백 제거 및 소문자 변환
+        password: password
+      };
+
+      console.log('📤 Login request:', { email: requestBody.email, password: '***' });
+
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({email, password}),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || '로그인 실패');
+        // Validation 에러 처리
+        if (response.status === 400 && data.message) {
+          const errorMessages = Array.isArray(data.message) 
+            ? data.message.join(', ') 
+            : data.message;
+          throw new Error(errorMessages);
+        }
+        throw new Error(data.error || data.message || '로그인 실패');
       }
 
       console.log('✅ Login success:', data);
       return {success: true, user: data.user, token: data.access_token};
     } catch (error) {
       console.error('❌ Login failed:', error);
+      
+      // 네트워크 연결 오류 체크
+      if (error.message.includes('Network request failed') || 
+          error.message.includes('Failed to fetch') ||
+          error.message.includes('ECONNREFUSED')) {
+        return {
+          success: false, 
+          error: `서버에 연결할 수 없습니다.\n\n확인 사항:\n1. 백엔드 서버가 실행 중인지 확인 (포트 3000)\n2. 같은 WiFi 네트워크에 연결되어 있는지 확인\n3. IP 주소가 올바른지 확인 (현재: ${API_BASE_URL})`
+        };
+      }
+      
       return {success: false, error: error.message};
     }
   }
@@ -217,6 +263,46 @@ class AuthAPI {
       return {success: false, error: error.message};
     }
   }
+
+  /**
+   * 프로필 수정
+   * @param {string} token - JWT 토큰
+   * @param {Object} profileData - { name, phoneNumber }
+   */
+  static async updateProfile(token, profileData) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(profileData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || '프로필 수정 실패');
+      }
+
+      console.log('✅ Profile updated:', data);
+      return {success: true, user: data};
+    } catch (error) {
+      console.error('❌ Update profile failed:', error);
+      return {success: false, error: error.message};
+    }
+  }
 }
+
+// Named exports for convenience
+export const register = AuthAPI.register.bind(AuthAPI);
+export const login = AuthAPI.login.bind(AuthAPI);
+export const getProfile = AuthAPI.getProfile.bind(AuthAPI);
+export const changePassword = AuthAPI.changePassword.bind(AuthAPI);
+export const deactivate = AuthAPI.deactivate.bind(AuthAPI);
+export const findEmail = AuthAPI.findEmail.bind(AuthAPI);
+export const resetPassword = AuthAPI.resetPassword.bind(AuthAPI);
+export const updateProfile = AuthAPI.updateProfile.bind(AuthAPI);
 
 export default AuthAPI;

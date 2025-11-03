@@ -9,9 +9,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Screens
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
+import FindAccountScreen from './src/screens/FindAccountScreen';
 import MainCameraScreen from './src/screens/MainCameraScreen';
 import ReportsScreen from './src/screens/ReportsScreen';
+import ReportDetailScreen from './src/screens/ReportDetailScreen';
 import MyPageScreen from './src/screens/MyPageScreen';
+import ProfileEditScreen from './src/screens/ProfileEditScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 
 const Stack = createNativeStackNavigator();
@@ -129,9 +132,14 @@ const App = () => {
               headerTintColor: '#fff',
             }}
           />
+          <Stack.Screen name="FindAccount" component={FindAccountScreen} />
 
           {/* Main Stack */}
           <Stack.Screen name="Main" component={MainTabs} />
+
+          {/* Detail Screens */}
+          <Stack.Screen name="ReportDetail" component={ReportDetailScreen} />
+          <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
 
           {/* Settings Stack */}
           <Stack.Screen

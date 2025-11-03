@@ -107,9 +107,13 @@ const ReportsScreen = ({navigation}) => {
             style={[
               styles.infoValue,
               styles.confidenceValue,
-              item.confidence >= 80 && styles.highConfidence,
+              (typeof item.confidence === 'number' ? item.confidence : parseFloat(item.confidence) || 0) >= 80 && styles.highConfidence,
             ]}>
-            {item.confidence ? `${item.confidence.toFixed(1)}%` : '-'}
+            {item.confidence 
+              ? `${(typeof item.confidence === 'number' 
+                  ? item.confidence 
+                  : parseFloat(item.confidence) || 0).toFixed(1)}%` 
+              : '-'}
           </Text>
         </View>
 

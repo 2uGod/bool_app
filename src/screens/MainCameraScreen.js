@@ -12,6 +12,7 @@ import {Camera, useCameraDevices} from 'react-native-vision-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import UserAPI from '../services/UserAPI';
 import FireDetectionAPI from '../services/FireDetectionAPI';
+import BackendHealthAPI from '../services/BackendHealthAPI';
 
 const MainCameraScreen = ({navigation}) => {
   const [hasPermission, setHasPermission] = useState(false);
@@ -21,6 +22,7 @@ const MainCameraScreen = ({navigation}) => {
   const [riskLevel, setRiskLevel] = useState(0); // 위험도
   const [fireType, setFireType] = useState(''); // 화재 유형
   const [lastEarnedPoints, setLastEarnedPoints] = useState(null); // 획득 점수
+  const [serverOnline, setServerOnline] = useState(true); // 서버 연결 상태
 
   const camera = useRef(null);
   const devices = useCameraDevices();
@@ -28,7 +30,18 @@ const MainCameraScreen = ({navigation}) => {
 
   useEffect(() => {
     requestCameraPermission();
+    checkServerStatus();
   }, []);
+
+  // 서버 상태 확인
+  const checkServerStatus = async () => {
+    const result = await BackendHealthAPI.checkHealth();
+    setServerOnline(result.success);
+    
+    if (!result.success) {
+      console.warn('⚠️ 백엔드 서버 연결 실패:', result.error);
+    }
+  };
 
   useEffect(() => {
     let interval;
@@ -87,6 +100,11 @@ const MainCameraScreen = ({navigation}) => {
         address: '경기 용인시 처인구 명지로 116',
       };
 
+      // 서버 상태 재확인 (연결 실패 시)
+      if (!serverOnline) {
+        await checkServerStatus();
+      }
+
       // 화재 감지 + 자동 신고
       console.log('🔥 Detecting and reporting...');
       const result = await UserAPI.detectAndReport(
@@ -96,6 +114,7 @@ const MainCameraScreen = ({navigation}) => {
       );
 
       if (result.success) {
+        setServerOnline(true); // 성공 시 서버 온라인으로 설정
         const data = result.result;
 
         console.log('✅ Detection result:', data);
@@ -138,12 +157,40 @@ const MainCameraScreen = ({navigation}) => {
         }
       } else {
         console.error('❌ Detection failed:', result.error);
-        Alert.alert('서버 연결 실패', `에러: ${result.error}\n\n시뮬레이션 모드로 전환합니다.`);
-        // 에러 시 시뮬레이션 사용
-        const simResult = await FireDetectionAPI.simulateDetection();
-        setFireDetected(simResult.fireDetected);
-        setRiskLevel(Math.round((simResult.confidence || 0) * 100));
-        setFireType(simResult.category);
+        setServerOnline(false); // 서버 오프라인으로 설정
+        
+        // 네트워크 연결 오류인지 확인
+        const isNetworkError = result.error && (
+          result.error.includes('서버에 연결할 수 없습니다') ||
+          result.error.includes('Network request failed') ||
+          result.error.includes('Failed to fetch')
+        );
+
+        if (isNetworkError) {
+          Alert.alert(
+            '서버 연결 실패',
+            `${result.error}\n\n확인 사항:\n1. 백엔드 서버가 실행 중인지 확인\n2. 같은 WiFi 네트워크에 연결되어 있는지 확인\n3. IP 주소가 올바른지 확인`,
+            [
+              {
+                text: '서버 상태 확인',
+                onPress: checkServerStatus,
+              },
+              {
+                text: '시뮬레이션 모드',
+                onPress: async () => {
+                  const simResult = await FireDetectionAPI.simulateDetection();
+                  setFireDetected(simResult.fireDetected);
+                  setRiskLevel(Math.round((simResult.confidence || 0) * 100));
+                  setFireType(simResult.category);
+                },
+              },
+              {text: '확인'},
+            ],
+          );
+        } else {
+          // 기타 오류
+          Alert.alert('화재 감지 실패', result.error || '알 수 없는 오류가 발생했습니다');
+        }
       }
     } catch (error) {
       console.error('❌ Error:', error);
@@ -211,6 +258,13 @@ const MainCameraScreen = ({navigation}) => {
             <Text style={styles.riskLabel}>예상 화재 위험도</Text>
             <Text style={styles.riskValue}>{riskLevel}%</Text>
             {fireType && <Text style={styles.fireType}>{fireType}</Text>}
+          </View>
+        )}
+
+        {/* 서버 연결 상태 표시 */}
+        {!serverOnline && (
+          <View style={styles.serverStatusBadge}>
+            <Text style={styles.serverStatusText}>⚠️ 서버 연결 안 됨</Text>
           </View>
         )}
 
@@ -432,6 +486,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 15,
+  },
+  serverStatusBadge: {
+    backgroundColor: 'rgba(244, 67, 54, 0.9)',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 15,
+    marginTop: 10,
+  },
+  serverStatusText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });
 

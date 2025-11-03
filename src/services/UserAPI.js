@@ -35,16 +35,43 @@ class UserAPI {
         body: formData,
       });
 
-      const data = await response.json();
+      // 응답이 JSON인지 확인
+      let data;
+      const contentType = response.headers.get('content-type');
+      const isJson = contentType && contentType.includes('application/json');
+
+      if (isJson) {
+        try {
+          data = await response.json();
+        } catch (jsonError) {
+          console.error('❌ JSON parse error:', jsonError);
+          throw new Error('서버 응답을 파싱할 수 없습니다.');
+        }
+      } else {
+        const text = await response.text();
+        throw new Error(`서버 오류: ${response.status} - ${text.substring(0, 100)}`);
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || '화재 감지 실패');
+        const errorMsg = data?.error || data?.message || `서버 오류: ${response.status}`;
+        throw new Error(errorMsg);
       }
 
       console.log('✅ Fire detection and report:', data);
       return {success: true, result: data};
     } catch (error) {
       console.error('❌ Detect and report failed:', error);
+      
+      // 네트워크 연결 오류 체크
+      if (error.message.includes('Network request failed') || 
+          error.message.includes('Failed to fetch') ||
+          error.message.includes('ECONNREFUSED')) {
+        return {
+          success: false, 
+          error: `서버에 연결할 수 없습니다.\n\n확인 사항:\n1. 백엔드 서버가 실행 중인지 확인 (포트 3000)\n2. 같은 WiFi 네트워크에 연결되어 있는지 확인\n3. IP 주소가 올바른지 확인 (현재: ${API_BASE_URL})`
+        };
+      }
+      
       return {success: false, error: error.message};
     }
   }
@@ -73,6 +100,17 @@ class UserAPI {
       return {success: true, reports: data.reports};
     } catch (error) {
       console.error('❌ Get reports failed:', error);
+      
+      // 네트워크 연결 오류 체크
+      if (error.message.includes('Network request failed') || 
+          error.message.includes('Failed to fetch') ||
+          error.message.includes('ECONNREFUSED')) {
+        return {
+          success: false, 
+          error: `서버 연결 실패\n\n서버가 실행 중인지 확인해주세요.\n(현재 IP: ${API_BASE_URL})`
+        };
+      }
+      
       return {success: false, error: error.message};
     }
   }
@@ -250,5 +288,15 @@ class UserAPI {
     }
   }
 }
+
+// Named exports for convenience
+export const detectAndReport = UserAPI.detectAndReport.bind(UserAPI);
+export const getMyReports = UserAPI.getMyReports.bind(UserAPI);
+export const getReportDetail = UserAPI.getReportDetail.bind(UserAPI);
+export const getMyRank = UserAPI.getMyRank.bind(UserAPI);
+export const getAllRanks = UserAPI.getAllRanks.bind(UserAPI);
+export const getShelters = UserAPI.getShelters.bind(UserAPI);
+export const submitInquiry = UserAPI.submitInquiry.bind(UserAPI);
+export const getMyInquiries = UserAPI.getMyInquiries.bind(UserAPI);
 
 export default UserAPI;
