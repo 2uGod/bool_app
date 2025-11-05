@@ -4,18 +4,17 @@
  */
 
 // ⚠️ IP 주소 변경 시 여기만 수정하세요
-// 터미널에서 IP 확인: ifconfig | grep "inet " | grep -v 127.0.0.1
+// AWS EC2 Public IP로 설정됨
 // NestJS Backend Server (포트 3000)
-// 현재 네트워크 IP: 192.168.219.103 또는 192.168.219.104
-// WiFi가 변경되면 IP 주소도 변경되어야 합니다
-export const API_BASE_URL = 'http://192.168.0.67:3000';
+// EC2 Public IP: 13.125.225.201
+export const API_BASE_URL = 'http://13.125.224.210:3000';
 
 // API 엔드포인트
 export const API_ENDPOINTS = {
   // Auth
   LOGIN: '/api/auth/login',
   REGISTER: '/api/auth/register',
-  PROFILE: '/api/user/profile',
+  PROFILE: '/api/users/profile',
   CHANGE_PASSWORD: '/api/user/password',
   DEACTIVATE: '/api/user/deactivate',
 

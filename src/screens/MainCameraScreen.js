@@ -21,7 +21,6 @@ const MainCameraScreen = ({navigation}) => {
   const [fireDetected, setFireDetected] = useState(false);
   const [riskLevel, setRiskLevel] = useState(0); // 위험도
   const [fireType, setFireType] = useState(''); // 화재 유형
-  const [lastEarnedPoints, setLastEarnedPoints] = useState(null); // 획득 점수
   const [serverOnline, setServerOnline] = useState(true); // 서버 연결 상태
 
   const camera = useRef(null);
@@ -119,8 +118,8 @@ const MainCameraScreen = ({navigation}) => {
 
         console.log('✅ Detection result:', data);
 
-        // 화재 감지 여부
-        const detected = data.has_fire || data.has_smoke;
+        // 화재 감지 여부 (연기는 제외, 화재만 신고)
+        const detected = data.has_fire;
         setFireDetected(detected);
 
         // 위험도
@@ -134,18 +133,14 @@ const MainCameraScreen = ({navigation}) => {
         };
         setFireType(typeMap[data.status] || data.status);
 
-        // 획득 점수
-        if (data.points_earned) {
-          setLastEarnedPoints(data.points_earned);
-          // 3초 후에 점수 알림 숨기기
-          setTimeout(() => setLastEarnedPoints(null), 3000);
-        }
+        // 화재 감지 시 알림 및 촬영 중지 (연기는 신고하지 않음)
+        if (data.has_fire && data.confidence >= 70) {
+          // 촬영 자동 중지
+          setIsActive(false);
 
-        // 화재 감지 시 알림
-        if (detected && data.confidence >= 70) {
           Alert.alert(
             '🔥 화재 감지!',
-            `${typeMap[data.status]}\n위험도: ${Math.round(data.confidence)}%\n획득 점수: +${data.points_earned}점`,
+            `${typeMap[data.status]}\n위험도: ${Math.round(data.confidence)}%\n\n화재가 신고되어 촬영이 중지되었습니다.`,
             [
               {
                 text: '신고 내역 보기',
@@ -206,7 +201,6 @@ const MainCameraScreen = ({navigation}) => {
       setFireDetected(false);
       setRiskLevel(0);
       setFireType('');
-      setLastEarnedPoints(null);
     }
   };
 
@@ -243,23 +237,11 @@ const MainCameraScreen = ({navigation}) => {
         photo={true}
       />
 
-      {/* 위험도 표시 (상단) */}
+      {/* 위치 표시 (상단) */}
       <View style={styles.topOverlay}>
         <View style={styles.locationContainer}>
           <Text style={styles.locationText}>📍 경기 용인시 처인구 명지로 116</Text>
         </View>
-
-        {riskLevel > 0 && (
-          <View
-            style={[
-              styles.riskContainer,
-              riskLevel >= 80 ? styles.riskHigh : styles.riskMedium,
-            ]}>
-            <Text style={styles.riskLabel}>예상 화재 위험도</Text>
-            <Text style={styles.riskValue}>{riskLevel}%</Text>
-            {fireType && <Text style={styles.fireType}>{fireType}</Text>}
-          </View>
-        )}
 
         {/* 서버 연결 상태 표시 */}
         {!serverOnline && (
@@ -267,22 +249,32 @@ const MainCameraScreen = ({navigation}) => {
             <Text style={styles.serverStatusText}>⚠️ 서버 연결 안 됨</Text>
           </View>
         )}
-
-        {/* 획득 점수 알림 */}
-        {lastEarnedPoints && (
-          <View style={styles.pointsNotification}>
-            <Text style={styles.pointsText}>⭐ +{lastEarnedPoints}점 획득!</Text>
-          </View>
-        )}
       </View>
 
-      {/* 화재 감지 상태 */}
+      {/* 화재 감지 상태 (위험도 + 신고 정보 통합) */}
       {fireDetected && (
         <View style={styles.alertOverlay}>
-          <View style={styles.alertBox}>
+          <View style={[
+            styles.alertBox,
+            riskLevel >= 80 ? styles.alertBoxHigh : styles.alertBoxMedium
+          ]}>
             <Text style={styles.alertEmoji}>🔥</Text>
             <Text style={styles.alertText}>화재 감지됨!</Text>
+
+            {/* 위험도 */}
+            <View style={styles.riskInfoContainer}>
+              <Text style={styles.riskLabel}>예상 화재 위험도</Text>
+              <Text style={styles.riskValue}>{riskLevel}%</Text>
+              {fireType && <Text style={styles.fireTypeInAlert}>{fireType}</Text>}
+            </View>
+
             <Text style={styles.alertSubtext}>소방서에 자동 신고되었습니다</Text>
+
+            <TouchableOpacity
+              style={styles.alertCloseButton}
+              onPress={() => setFireDetected(false)}>
+              <Text style={styles.alertCloseText}>닫기</Text>
+            </TouchableOpacity>
           </View>
         </View>
       )}
@@ -369,48 +361,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
   },
-  riskContainer: {
-    backgroundColor: 'rgba(255, 152, 0, 0.9)',
-    paddingHorizontal: 30,
-    paddingVertical: 20,
-    borderRadius: 15,
-    alignItems: 'center',
-    minWidth: 200,
-  },
-  riskHigh: {
-    backgroundColor: 'rgba(244, 67, 54, 0.9)',
-  },
-  riskMedium: {
-    backgroundColor: 'rgba(255, 152, 0, 0.9)',
-  },
-  riskLabel: {
-    color: '#fff',
-    fontSize: 14,
-    marginBottom: 5,
-  },
-  riskValue: {
-    color: '#fff',
-    fontSize: 48,
-    fontWeight: 'bold',
-  },
-  fireType: {
-    color: '#fff',
-    fontSize: 16,
-    marginTop: 5,
-    fontWeight: '600',
-  },
-  pointsNotification: {
-    backgroundColor: 'rgba(76, 175, 80, 0.9)',
-    paddingHorizontal: 25,
-    paddingVertical: 12,
-    borderRadius: 20,
-    marginTop: 15,
-  },
-  pointsText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
   alertOverlay: {
     position: 'absolute',
     top: 0,
@@ -427,6 +377,15 @@ const styles = StyleSheet.create({
     padding: 40,
     borderRadius: 20,
     alignItems: 'center',
+    minWidth: 300,
+  },
+  alertBoxHigh: {
+    borderWidth: 4,
+    borderColor: '#F44336',
+  },
+  alertBoxMedium: {
+    borderWidth: 4,
+    borderColor: '#FF9800',
   },
   alertEmoji: {
     fontSize: 64,
@@ -436,12 +395,50 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#F44336',
-    marginBottom: 10,
+    marginBottom: 20,
+  },
+  riskInfoContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingVertical: 15,
+    paddingHorizontal: 25,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 15,
+    width: '100%',
+  },
+  riskLabel: {
+    color: '#666',
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  riskValue: {
+    color: '#F44336',
+    fontSize: 48,
+    fontWeight: 'bold',
+  },
+  fireTypeInAlert: {
+    color: '#333',
+    fontSize: 16,
+    marginTop: 8,
+    fontWeight: '600',
   },
   alertSubtext: {
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
+    marginBottom: 5,
+  },
+  alertCloseButton: {
+    marginTop: 15,
+    backgroundColor: '#FF4500',
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  alertCloseText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   bottomOverlay: {
     position: 'absolute',

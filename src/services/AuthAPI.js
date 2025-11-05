@@ -115,7 +115,7 @@ class AuthAPI {
    */
   static async getProfile(token) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/user/profile`, {
+      const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -126,7 +126,7 @@ class AuthAPI {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || '프로필 조회 실패');
+        throw new Error(data.error || data.message || '프로필 조회 실패');
       }
 
       console.log('✅ Profile loaded:', data);

@@ -1,97 +1,175 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# BOOL 모바일 앱 (React Native)
 
-# Getting Started
+화재 감지 및 신고를 위한 모바일 애플리케이션입니다.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## 📱 기술 스택
 
-## Step 1: Start Metro
+- React Native 0.82.0
+- React Navigation (Stack + Bottom Tabs)
+- AsyncStorage (로컬 저장소)
+- Vision Camera (카메라 기능)
+- TensorFlow.js (추후 온디바이스 AI 기능)
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## 🚀 설치 및 실행
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+### 1. 사전 요구사항
 
-```sh
-# Using npm
-npm start
+- Node.js 20 이상
+- iOS 개발: Xcode 및 CocoaPods (Mac만 가능)
+- Android 개발: Android Studio 및 JDK
 
-# OR using Yarn
-yarn start
+React Native 환경 설정: [공식 가이드](https://reactnative.dev/docs/set-up-your-environment)
+
+### 2. 저장소 클론 및 의존성 설치
+
+```bash
+git clone <repository-url>
+cd Bool_pj/mobile
+npm install
 ```
 
-## Step 2: Build and run your app
+### 3. iOS Pod 설치 (Mac만 해당)
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+```bash
+cd ios
+pod install
+cd ..
+```
 
-### Android
+### 4. 백엔드 서버 주소 설정 ⚠️ 중요!
 
-```sh
-# Using npm
+`src/config/api.js` 파일에서 API 주소가 설정되어 있습니다:
+
+```javascript
+// AWS 클라우드 서버
+export const API_BASE_URL = 'http://13.125.225.201:3000';
+```
+
+**별도 수정 없이 바로 사용 가능합니다!**
+
+### 5. 앱 실행
+
+#### iOS (Mac만 가능)
+
+```bash
+npm run ios
+```
+
+#### Android
+
+```bash
 npm run android
-
-# OR using Yarn
-yarn android
 ```
+
+## 🔧 HTTP 통신 설정 (이미 완료됨)
 
 ### iOS
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+`ios/FireDetectionApp/Info.plist`에 설정되어 있습니다:
+- HTTP 통신 허용 (NSAllowsArbitraryLoads)
+- AWS 서버 예외 도메인 설정
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+### Android
 
-```sh
-bundle install
+`android/gradle.properties`에 설정되어 있습니다:
+```properties
+usesCleartextTraffic=true
 ```
 
-Then, and every time you update your native dependencies, run:
+## 📂 프로젝트 구조
 
-```sh
-bundle exec pod install
+```
+mobile/
+├── src/
+│   ├── config/
+│   │   └── api.js              # API 주소 설정 ⚠️
+│   ├── screens/
+│   │   ├── LoginScreen.js      # 로그인
+│   │   ├── RegisterScreen.js   # 회원가입
+│   │   ├── MainCameraScreen.js # 화재 감지 카메라
+│   │   ├── ReportsScreen.js    # 신고 내역
+│   │   └── MyPageScreen.js     # 마이페이지
+│   ├── services/
+│   │   ├── AuthAPI.js          # 인증 API
+│   │   ├── UserAPI.js          # 사용자 API
+│   │   ├── FireDetectionAPI.js # 화재 감지 API
+│   │   └── BackendHealthAPI.js # 서버 헬스 체크
+│   └── components/
+├── android/                    # Android 네이티브 코드
+├── ios/                        # iOS 네이티브 코드
+└── App.tsx                     # 앱 엔트리 포인트
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+## 🐛 문제 해결
 
-```sh
-# Using npm
-npm run ios
+### "서버 연결 실패" 오류
 
-# OR using Yarn
-yarn ios
+1. 백엔드 서버가 실행 중인지 확인
+2. `src/config/api.js`의 IP 주소가 올바른지 확인
+3. 실제 기기 테스트 시: 같은 WiFi 네트워크에 연결되어 있는지 확인
+
+### Metro Bundler 캐시 문제
+
+```bash
+npm start -- --reset-cache
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+### iOS 빌드 오류
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+```bash
+cd ios
+rm -rf build Pods
+pod install
+cd ..
+```
 
-## Step 3: Modify your app
+### Android 빌드 오류
 
-Now that you have successfully run the app, let's make changes!
+```bash
+cd android
+./gradlew clean
+cd ..
+```
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+### ATS Policy 오류 (iOS)
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+Info.plist 설정을 확인하고, 필요시 Xcode에서 클린 빌드:
+```bash
+cd ios
+xcodebuild clean
+cd ..
+```
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+## 📱 테스트
 
-## Congratulations! :tada:
+### 에뮬레이터/시뮬레이터
 
-You've successfully run and modified your React Native App. :partying_face:
+- iOS Simulator 및 Android Emulator에서 테스트 가능
+- AWS 클라우드 서버에 연결되므로 인터넷 연결만 필요
 
-### Now what?
+### 실제 기기
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+- WiFi 또는 모바일 데이터 연결 필요
+- AWS 클라우드 서버에 연결되므로 별도 설정 불필요
 
-# Troubleshooting
+## 🔐 권한
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+앱 실행 시 다음 권한이 필요합니다:
 
-# Learn More
+- 📷 **카메라**: 화재 감지 기능 (필수)
+- 🎤 **마이크**: 비디오 녹화 (선택)
+- 📍 **위치**: 화재 신고 위치 정보 (선택)
 
-To learn more about React Native, take a look at the following resources:
+## 📚 관련 문서
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+- 백엔드 API: `../backend/README.md`
+- API 문서 (Swagger): `http://13.125.225.201:3000/api-docs`
+- [React Native 공식 문서](https://reactnative.dev/)
+
+## 🤝 기여
+
+1. 이 저장소를 포크합니다
+2. 기능 브랜치를 생성합니다 (`git checkout -b feature/amazing-feature`)
+3. 변경사항을 커밋합니다 (`git commit -m 'Add amazing feature'`)
+4. 브랜치에 푸시합니다 (`git push origin feature/amazing-feature`)
+5. Pull Request를 생성합니다

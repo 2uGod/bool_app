@@ -13,11 +13,14 @@ class BackendHealthAPI {
   static async checkHealth() {
     // 타임아웃을 위해 AbortController 사용 (AbortSignal.timeout은 React Native에서 지원 안 됨)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutMs = 8000; // 네트워크 환경에 따라 여유 증가
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       // NestJS 백엔드는 /api 엔드포인트로 확인 가능
-      const response = await fetch(`${API_BASE_URL}/api`, {
+      const url = `${API_BASE_URL}/api`;
+      console.log('🩺 Backend health check URL:', url);
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -37,11 +40,25 @@ class BackendHealthAPI {
     } catch (error) {
       clearTimeout(timeoutId);
       console.error('❌ Backend health check failed:', error);
+
+      // GET이 네트워크 정책에 막히는 환경을 위해 HEAD로 폴백 시도
+      try {
+        const headController = new AbortController();
+        const headTimeoutId = setTimeout(() => headController.abort(), 3000);
+        const headUrl = `${API_BASE_URL}/api`;
+        const headResp = await fetch(headUrl, { method: 'HEAD', signal: headController.signal });
+        clearTimeout(headTimeoutId);
+        if (headResp && headResp.ok) {
+          return { success: false, error: 'GET 응답 실패(HEAD는 성공). 서버의 /api GET 응답을 확인하세요.' };
+        }
+      } catch (_) {
+        // 폴백도 실패 시 아래 에러 메시지 구성
+      }
       
       // 네트워크 오류 상세 정보
       let errorMessage = error.message;
       if (error.name === 'AbortError' || error.message.includes('aborted')) {
-        errorMessage = '서버 응답 시간 초과 (5초)';
+        errorMessage = `서버 응답 시간 초과 (${timeoutMs / 1000}초)`;
       } else if (error.message.includes('Network request failed') || 
                  error.message.includes('Failed to fetch') ||
                  error.message.includes('ECONNREFUSED')) {

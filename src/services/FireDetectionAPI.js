@@ -61,9 +61,7 @@ class FireDetectionAPI {
       // API 호출 (NestJS를 통한 화재 감지)
       const url = `${API_BASE_URL}/api/reports/detect`;
 
-      const headers = {
-        'Content-Type': 'multipart/form-data',
-      };
+      const headers = {};
 
       // 토큰이 있으면 Authorization 헤더 추가
       if (token) {

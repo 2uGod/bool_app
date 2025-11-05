@@ -10,11 +10,9 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthAPI from '../services/AuthAPI';
-import UserAPI from '../services/UserAPI';
 
 const MyPageScreen = ({navigation}) => {
   const [user, setUser] = useState(null);
-  const [rankInfo, setRankInfo] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,27 +24,66 @@ const MyPageScreen = ({navigation}) => {
       const token = await AsyncStorage.getItem('access_token');
       const userStr = await AsyncStorage.getItem('user');
 
-      if (!token || !userStr) {
+      if (!token) {
+        console.log('⚠️ No token found, redirecting to Login');
         navigation.replace('Login');
         return;
       }
 
-      // 프로필 조회
-      const profileResult = await AuthAPI.getProfile(token);
-      if (profileResult.success) {
-        setUser(profileResult.profile);
+      // 로컬 저장된 사용자 정보를 먼저 표시 (fallback)
+      let localUser = null;
+      if (userStr) {
+        try {
+          localUser = JSON.parse(userStr);
+          setUser(localUser);
+          console.log('✅ Local user data loaded:', localUser);
+        } catch (parseError) {
+          console.error('❌ Failed to parse user data:', parseError);
+        }
       }
 
-      // 계급 정보 조회
-      const rankResult = await UserAPI.getMyRank(token);
-      if (rankResult.success) {
-        setRankInfo(rankResult.rankInfo);
+      // 서버에서 최신 프로필 조회
+      console.log('📡 Fetching profile from server...');
+      const profileResult = await AuthAPI.getProfile(token);
+
+      if (profileResult.success && profileResult.profile) {
+        console.log('✅ Server profile loaded:', profileResult.profile);
+        setUser(profileResult.profile);
+
+        // 서버 데이터로 AsyncStorage 업데이트
+        await AsyncStorage.setItem('user', JSON.stringify(profileResult.profile));
+      } else {
+        console.warn('⚠️ Profile fetch failed:', profileResult.error);
+
+        // 서버 조회 실패 시 로컬 데이터 사용
+        if (!localUser) {
+          console.error('❌ No local user data available');
+          Alert.alert(
+            '프로필 로드 실패',
+            `서버에서 프로필을 불러올 수 없습니다.\n오류: ${profileResult.error || '알 수 없는 오류'}`,
+            [
+              { text: '재시도', onPress: loadUserData },
+              { text: '확인' }
+            ]
+          );
+        }
       }
 
       setLoading(false);
     } catch (error) {
-      console.error('Error loading user data:', error);
+      console.error('❌ Error loading user data:', error);
+
+      // 에러 발생 시에도 로컬 데이터 유지
       setLoading(false);
+
+      Alert.alert(
+        '오류',
+        '사용자 정보를 불러오는 중 오류가 발생했습니다.',
+        [
+          { text: '재시도', onPress: loadUserData },
+          { text: '확인' }
+        ]
+      );
     }
   };
 
@@ -76,26 +113,11 @@ const MyPageScreen = ({navigation}) => {
     <ScrollView style={styles.container}>
       {/* 프로필 헤더 */}
       <View style={styles.profileHeader}>
-        <View style={styles.rankBadge}>
-          <Text style={styles.rankEmoji}>🔥</Text>
-          <Text style={styles.rankName}>
-            {rankInfo?.current_rank?.name || '소방사'}
-          </Text>
+        <View style={styles.profileIcon}>
+          <Text style={styles.profileEmoji}>👤</Text>
         </View>
         <Text style={styles.userName}>{user?.name || '사용자'} 님</Text>
         <Text style={styles.email}>{user?.email || ''}</Text>
-        {rankInfo && (
-          <View style={styles.pointsContainer}>
-            <Text style={styles.pointsText}>
-              현재 점수: {rankInfo.user_points}점
-            </Text>
-            {rankInfo.next_rank && (
-              <Text style={styles.nextRankText}>
-                {rankInfo.next_rank.name}까지 {rankInfo.points_to_next}점 남음
-              </Text>
-            )}
-          </View>
-        )}
       </View>
 
       {/* 메뉴 */}
@@ -104,21 +126,6 @@ const MyPageScreen = ({navigation}) => {
           icon="📝"
           title="개인 정보 설정 및 수정"
           onPress={() => navigation.navigate('ProfileEdit')}
-        />
-        <MenuItem
-          icon="🏠"
-          title="현재 지역 대피소 및 피난처 위치"
-          onPress={() => navigation.navigate('Shelters')}
-        />
-        <MenuItem
-          icon="🏅"
-          title="소방 등급 확인"
-          onPress={() => navigation.navigate('RankInfo')}
-        />
-        <MenuItem
-          icon="💬"
-          title="문의 및 건의사항"
-          onPress={() => navigation.navigate('Inquiry')}
         />
         <MenuItem
           icon="⚙️"
@@ -175,23 +182,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
-  rankBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  profileIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: '#FF4500',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 15,
   },
-  rankEmoji: {
-    fontSize: 20,
-    marginRight: 8,
-  },
-  rankName: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
+  profileEmoji: {
+    fontSize: 40,
   },
   userName: {
     fontSize: 24,
@@ -200,20 +201,6 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   email: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 15,
-  },
-  pointsContainer: {
-    alignItems: 'center',
-  },
-  pointsText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 5,
-  },
-  nextRankText: {
     fontSize: 14,
     color: '#666',
   },

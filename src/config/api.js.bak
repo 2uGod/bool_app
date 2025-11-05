@@ -8,7 +8,7 @@
 // NestJS Backend Server (포트 3000)
 // 현재 네트워크 IP: 192.168.219.103 또는 192.168.219.104
 // WiFi가 변경되면 IP 주소도 변경되어야 합니다
-export const API_BASE_URL = 'http://192.168.0.67:3000';
+export const API_BASE_URL = 'http://13.125.225.201:3000';
 
 // API 엔드포인트
 export const API_ENDPOINTS = {
