@@ -49,7 +49,9 @@
 		</dict>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string></string>
+	<string>앱 사용 중 위치를 확인하여 신고 위치를 정확히 측정합니다</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>앱이 백그라운드에 있을 때도 위치 정보를 사용하여 신속하게 대응합니다</string>
 	<key>NSCameraUsageDescription</key>
 	<string>화재 감지를 위해 카메라 접근이 필요합니다</string>
 	<key>NSMicrophoneUsageDescription</key>
