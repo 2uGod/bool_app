@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,20 +8,23 @@ import {
   Dimensions,
   ActivityIndicator,
   Platform,
+  PermissionsAndroid,
 } from 'react-native';
-import {Camera, useCameraDevices, useFrameProcessor} from 'react-native-vision-camera';
+import { Camera, useCameraDevices } from 'react-native-vision-camera';
+import Geolocation from '@react-native-community/geolocation';
 import DetectionOverlay from '../components/DetectionOverlay';
-import {saveDetection} from '../services/StorageService';
+import { saveDetection } from '../services/StorageService';
 import YoloInferenceService from '../services/YoloInferenceService';
 import FireDetectionAPI from '../services/FireDetectionAPI';
 
-const {width, height} = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
-// 시뮬레이터 감지
-const isSimulator = Platform.OS === 'ios' && !Platform.isPad && Platform.isTesting !== true;
+const isSimulator =
+  Platform.OS === 'ios' && !Platform.isPad && Platform.isTesting !== true;
 
 const DetectionScreen = () => {
   const [hasPermission, setHasPermission] = useState(false);
+  const [hasLocationPermission, setHasLocationPermission] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [detectionResult, setDetectionResult] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -30,7 +33,8 @@ const DetectionScreen = () => {
   const [modelLoaded, setModelLoaded] = useState(false);
   const [useRealModel, setUseRealModel] = useState(true);
   const [serverAvailable, setServerAvailable] = useState(false);
-  const [useFlaskAPI, setUseFlaskAPI] = useState(true); // Flask API 사용 여부
+  const [useFlaskAPI, setUseFlaskAPI] = useState(true);
+  const [currentLocation, setCurrentLocation] = useState(null);
 
   const camera = useRef(null);
   const devices = useCameraDevices();
@@ -40,20 +44,16 @@ const DetectionScreen = () => {
     console.log('Available camera devices:', devices);
     console.log('Selected back camera:', device);
 
-    // Check Flask API server
     checkServerHealth();
-
-    // Load YOLO model (fallback)
     loadYoloModel();
-
     requestCameraPermission();
+    requestLocationPermission(); // 위치 권한 요청 추가
 
-    // 3초 후에도 카메라가 없으면 시뮬레이터 모드 활성화
     const timeout = setTimeout(() => {
       if (!device) {
         setCameraTimeout(true);
         setSimulatorMode(true);
-        setHasPermission(true); // 시뮬레이터에서는 권한 통과
+        setHasPermission(true);
       }
     }, 3000);
 
@@ -63,13 +63,73 @@ const DetectionScreen = () => {
   useEffect(() => {
     let interval;
     if (isActive && (camera.current || simulatorMode)) {
-      // 프레임 분석 시뮬레이션 (실제로는 TFLite 모델 연동)
       interval = setInterval(() => {
         analyzeFrame();
-      }, 2000); // 2초마다 분석
+      }, 2000);
     }
     return () => clearInterval(interval);
   }, [isActive, simulatorMode]);
+
+  // 📍 위치 권한 요청 (iOS용)
+  const requestLocationPermission = async () => {
+    try {
+      console.log('🌍 Requesting location permission...');
+
+      if (Platform.OS === 'ios') {
+        // iOS는 자동으로 Info.plist 권한 요청
+        Geolocation.requestAuthorization('whenInUse');
+        setHasLocationPermission(true);
+        getCurrentLocation();
+      } else if (Platform.OS === 'android') {
+        // Android 권한 요청
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: '위치 권한 필요',
+            message: '화재 신고 시 위치 정보가 필요합니다.',
+            buttonPositive: '확인',
+          },
+        );
+
+        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+          setHasLocationPermission(true);
+          getCurrentLocation();
+        } else {
+          Alert.alert('위치 권한 거부', '위치 정보 없이 진행됩니다.');
+        }
+      }
+    } catch (error) {
+      console.error('Location permission error:', error);
+    }
+  };
+
+  // 📍 현재 위치 가져오기
+  const getCurrentLocation = () => {
+    Geolocation.getCurrentPosition(
+      position => {
+        const { latitude, longitude } = position.coords;
+        console.log('✅ Location acquired:', latitude, longitude);
+        setCurrentLocation({
+          latitude,
+          longitude,
+          address: '위치 정보 수신됨', // 주소 변환은 선택사항
+        });
+      },
+      error => {
+        console.error('❌ Location error:', error);
+        Alert.alert(
+          '위치 정보 오류',
+          '위치 정보를 가져올 수 없습니다. 기본 위치로 진행됩니다.',
+          [{ text: '확인' }],
+        );
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 10000,
+      },
+    );
+  };
 
   const checkServerHealth = async () => {
     try {
@@ -120,11 +180,10 @@ const DetectionScreen = () => {
         Alert.alert(
           '카메라 권한 필요',
           '설정 > FireDetectionApp > 카메라 권한을 활성화해주세요.',
-          [{text: '확인'}]
+          [{ text: '확인' }],
         );
       }
     } catch (error) {
-      // 시뮬레이터에서 에러 발생 시 시뮬레이터 모드 활성화
       console.log('Camera error:', error);
       console.log('Camera not available, using simulator mode');
       setSimulatorMode(true);
@@ -140,10 +199,14 @@ const DetectionScreen = () => {
     let detection;
 
     try {
+      // 📍 분석 시작 전 최신 위치 업데이트
+      if (hasLocationPermission && !currentLocation) {
+        getCurrentLocation();
+      }
+
       // 1순위: Flask API 사용 (카메라가 있을 때)
       if (useFlaskAPI && serverAvailable && camera.current && !simulatorMode) {
         try {
-          // 카메라에서 프레임 캡처
           const photo = await camera.current.takePhoto({
             qualityPrioritization: 'speed',
             flash: 'off',
@@ -151,15 +214,19 @@ const DetectionScreen = () => {
           });
 
           console.log('📸 Photo captured:', photo.path);
+          console.log('📍 Sending with location:', currentLocation);
           console.log('🚀 Calling Flask API...');
 
-          // Flask API 호출
-          detection = await FireDetectionAPI.detectFire(photo.path, false);
+          // 📍 위치 정보와 함께 API 호출
+          detection = await FireDetectionAPI.detectFire(
+            photo.path,
+            currentLocation, // 위치 정보 전달
+            null, // 토큰 (필요시 AsyncStorage에서 가져오기)
+          );
 
           console.log('✅ Flask API detection result:', detection);
         } catch (apiError) {
           console.error('❌ Flask API error, falling back:', apiError);
-          // Flask API 실패 시 로컬 모델로 폴백
           detection = await YoloInferenceService.detectFire();
         }
       }
@@ -191,7 +258,7 @@ const DetectionScreen = () => {
 
       // 박스 좌표를 화면 크기에 맞게 스케일링
       if (detection.detections && detection.imageSize) {
-        const {width: imgWidth, height: imgHeight} = detection.imageSize;
+        const { width: imgWidth, height: imgHeight } = detection.imageSize;
         const scaleX = width / imgWidth;
         const scaleY = height / imgHeight;
 
@@ -208,9 +275,24 @@ const DetectionScreen = () => {
 
       setDetectionResult(detection);
 
-      // 화재 감지 시 저장
+      // 화재 감지 시 저장 (위치 정보 포함)
       if (detection.fireDetected) {
-        await saveDetection(detection);
+        const detectionWithLocation = {
+          ...detection,
+          location: currentLocation, // 위치 정보 추가
+        };
+        await saveDetection(detectionWithLocation);
+
+        // 화재 감지 알림
+        Alert.alert(
+          '🔥 화재 감지!',
+          `위치: ${currentLocation?.latitude?.toFixed(
+            6,
+          )}, ${currentLocation?.longitude?.toFixed(6)}\n신뢰도: ${(
+            detection.confidence * 100
+          ).toFixed(1)}%`,
+          [{ text: '확인' }],
+        );
       }
     } catch (error) {
       console.error('❌ Frame analysis error:', error);
@@ -219,47 +301,12 @@ const DetectionScreen = () => {
     }
   };
 
-  const simulateDetection = () => {
-    // 실제로는 YOLOv8 + SegFormer 모델 결과
-    const hasFireSmoke = Math.random() > 0.85; // 15% 확률로 화재/연기 감지
-
-    if (!hasFireSmoke) {
-      return {
-        fireDetected: false,
-        category: 'no_fire',
-        confidence: 0.0,
-        timestamp: new Date().toISOString(),
-      };
+  const toggleDetection = () => {
+    if (!isActive && !currentLocation) {
+      // 감지 시작 시 위치 재확인
+      getCurrentLocation();
     }
 
-    const categories = ['wildfire', 'urban_fire', 'uncertain'];
-    const category = categories[Math.floor(Math.random() * categories.length)];
-
-    return {
-      fireDetected: true,
-      category: category,
-      confidence: 0.7 + Math.random() * 0.25, // 0.7-0.95
-      detections: [
-        {
-          class: Math.random() > 0.5 ? 'fire' : 'smoke',
-          confidence: 0.8 + Math.random() * 0.15,
-          bbox: {
-            x: Math.random() * 0.5 * width,
-            y: Math.random() * 0.5 * height,
-            width: 100 + Math.random() * 100,
-            height: 100 + Math.random() * 100,
-          },
-        },
-      ],
-      sceneInfo: {
-        vegetationRatio: category === 'wildfire' ? 0.7 : 0.2,
-        urbanRatio: category === 'urban_fire' ? 0.8 : 0.1,
-      },
-      timestamp: new Date().toISOString(),
-    };
-  };
-
-  const toggleDetection = () => {
     setIsActive(!isActive);
     if (isActive) {
       setDetectionResult(null);
@@ -272,7 +319,8 @@ const DetectionScreen = () => {
         <Text style={styles.permissionText}>카메라 권한이 필요합니다</Text>
         <TouchableOpacity
           style={styles.permissionButton}
-          onPress={requestCameraPermission}>
+          onPress={requestCameraPermission}
+        >
           <Text style={styles.buttonText}>권한 요청</Text>
         </TouchableOpacity>
       </View>
@@ -293,7 +341,6 @@ const DetectionScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* 실제 카메라 또는 시뮬레이터 배경 */}
       {device && !simulatorMode ? (
         <Camera
           ref={camera}
@@ -317,11 +364,21 @@ const DetectionScreen = () => {
       />
 
       <View style={styles.controlsContainer}>
+        {/* 위치 정보 표시 */}
+        {currentLocation && (
+          <View style={styles.locationContainer}>
+            <Text style={styles.locationText}>
+              📍 {currentLocation.latitude.toFixed(4)},{' '}
+              {currentLocation.longitude.toFixed(4)}
+            </Text>
+          </View>
+        )}
+
         <View style={styles.statusContainer}>
           <View
             style={[
               styles.statusIndicator,
-              {backgroundColor: isActive ? '#00FF00' : '#FF0000'},
+              { backgroundColor: isActive ? '#00FF00' : '#FF0000' },
             ]}
           />
           <Text style={styles.statusText}>
@@ -332,9 +389,10 @@ const DetectionScreen = () => {
         <TouchableOpacity
           style={[
             styles.toggleButton,
-            {backgroundColor: isActive ? '#FF4500' : '#00AA00'},
+            { backgroundColor: isActive ? '#FF4500' : '#00AA00' },
           ]}
-          onPress={toggleDetection}>
+          onPress={toggleDetection}
+        >
           <Text style={styles.toggleButtonText}>
             {isActive ? '감지 중지' : '감지 시작'}
           </Text>
@@ -350,7 +408,7 @@ const DetectionScreen = () => {
                 신뢰도: {(detectionResult.confidence * 100).toFixed(1)}%
               </Text>
             )}
-            <Text style={[styles.infoText, {fontSize: 11, opacity: 0.7}]}>
+            <Text style={[styles.infoText, { fontSize: 11, opacity: 0.7 }]}>
               {serverAvailable && useFlaskAPI
                 ? '🌐 Flask API'
                 : modelLoaded && useRealModel
@@ -360,7 +418,6 @@ const DetectionScreen = () => {
           </View>
         )}
       </View>
-
     </View>
   );
 };
@@ -436,6 +493,18 @@ const styles = StyleSheet.create({
     right: 20,
     alignItems: 'center',
   },
+  locationContainer: {
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 15,
+    marginBottom: 10,
+  },
+  locationText: {
+    color: '#4CAF50',
+    fontSize: 12,
+    fontWeight: '600',
+  },
   statusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -462,7 +531,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     elevation: 5,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
   },
