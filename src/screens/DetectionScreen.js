@@ -76,10 +76,14 @@ const DetectionScreen = () => {
       console.log('🌍 Requesting location permission...');
 
       if (Platform.OS === 'ios') {
-        // iOS는 자동으로 Info.plist 권한 요청
+        // iOS 권한 요청 (Info.plist에 정의된 메시지가 표시됨)
         Geolocation.requestAuthorization('whenInUse');
-        setHasLocationPermission(true);
-        getCurrentLocation();
+
+        // 약간의 지연 후 위치 가져오기 시도
+        setTimeout(() => {
+          setHasLocationPermission(true);
+          getCurrentLocation();
+        }, 500);
       } else if (Platform.OS === 'android') {
         // Android 권한 요청
         const granted = await PermissionsAndroid.request(
@@ -99,7 +103,8 @@ const DetectionScreen = () => {
         }
       }
     } catch (error) {
-      console.error('Location permission error:', error);
+      console.error('❌ Location permission error:', error);
+      Alert.alert('오류', '위치 권한 요청 중 오류가 발생했습니다.');
     }
   };
 
