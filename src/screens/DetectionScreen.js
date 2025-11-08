@@ -501,14 +501,21 @@ const styles = StyleSheet.create({
   locationContainer: {
     backgroundColor: 'rgba(0,0,0,0.7)',
     paddingHorizontal: 15,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 15,
     marginBottom: 10,
+    maxWidth: '90%',
   },
   locationText: {
     color: '#4CAF50',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
+    marginBottom: 3,
+  },
+  locationCoords: {
+    color: '#4CAF50',
+    fontSize: 10,
+    opacity: 0.8,
   },
   statusContainer: {
     flexDirection: 'row',
