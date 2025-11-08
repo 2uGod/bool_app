@@ -1,9 +1,9 @@
-import React, {useState, useEffect} from 'react';
-import {NavigationContainer} from '@react-navigation/native';
-import {createNativeStackNavigator} from '@react-navigation/native-stack';
-import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import {SafeAreaProvider} from 'react-native-safe-area-context';
-import {View, Text, StyleSheet, ActivityIndicator} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Screens
@@ -16,6 +16,7 @@ import ReportDetailScreen from './src/screens/ReportDetailScreen';
 import MyPageScreen from './src/screens/MyPageScreen';
 import ProfileEditScreen from './src/screens/ProfileEditScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import LocationTestScreen from './src/screens/LocationTestScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -41,15 +42,16 @@ const MainTabs = () => {
         headerTitleStyle: {
           fontWeight: 'bold',
         },
-      }}>
+      }}
+    >
       <Tab.Screen
         name="Detection"
         component={MainCameraScreen}
         options={{
           tabBarLabel: '화재 감지',
-          tabBarIcon: ({color}) => (
+          tabBarIcon: ({ color }) => (
             <View style={styles.iconContainer}>
-              <Text style={[styles.icon, {color}]}>🔥</Text>
+              <Text style={[styles.icon, { color }]}>🔥</Text>
             </View>
           ),
           headerTitle: 'BOOL 화재 감지',
@@ -60,9 +62,9 @@ const MainTabs = () => {
         component={ReportsScreen}
         options={{
           tabBarLabel: '신고 내역',
-          tabBarIcon: ({color}) => (
+          tabBarIcon: ({ color }) => (
             <View style={styles.iconContainer}>
-              <Text style={[styles.icon, {color}]}>📋</Text>
+              <Text style={[styles.icon, { color }]}>📋</Text>
             </View>
           ),
           headerTitle: '신고 내역',
@@ -73,12 +75,25 @@ const MainTabs = () => {
         component={MyPageScreen}
         options={{
           tabBarLabel: '마이페이지',
-          tabBarIcon: ({color}) => (
+          tabBarIcon: ({ color }) => (
             <View style={styles.iconContainer}>
-              <Text style={[styles.icon, {color}]}>👤</Text>
+              <Text style={[styles.icon, { color }]}>👤</Text>
             </View>
           ),
           headerTitle: '마이페이지',
+        }}
+      />
+      <Tab.Screen
+        name="LocationTest"
+        component={LocationTestScreen}
+        options={{
+          tabBarLabel: '위치테스트',
+          tabBarIcon: ({ color }) => (
+            <View style={styles.iconContainer}>
+              <Text style={[styles.icon, { color }]}>📍</Text>
+            </View>
+          ),
+          headerTitle: '위치 테스트',
         }}
       />
     </Tab.Navigator>
@@ -88,7 +103,6 @@ const MainTabs = () => {
 const App = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-
   useEffect(() => {
     checkLoginStatus();
   }, []);
@@ -119,7 +133,8 @@ const App = () => {
           initialRouteName={isLoggedIn ? 'Main' : 'Login'}
           screenOptions={{
             headerShown: false,
-          }}>
+          }}
+        >
           {/* Auth Stack */}
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen
@@ -128,7 +143,7 @@ const App = () => {
             options={{
               headerShown: true,
               headerTitle: '회원가입',
-              headerStyle: {backgroundColor: '#FF4500'},
+              headerStyle: { backgroundColor: '#FF4500' },
               headerTintColor: '#fff',
             }}
           />
@@ -148,7 +163,7 @@ const App = () => {
             options={{
               headerShown: true,
               headerTitle: '설정',
-              headerStyle: {backgroundColor: '#FF4500'},
+              headerStyle: { backgroundColor: '#FF4500' },
               headerTintColor: '#fff',
             }}
           />
