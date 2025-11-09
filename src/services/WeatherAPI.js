@@ -3,8 +3,10 @@
  * 위치 기반 실시간 날씨 정보 조회
  */
 
-const WEATHER_API_KEY = '34cbc6daffd0aa8823a0113e1093ee967f661ada33889aa9f7a32aeea4eb0778';
-const WEATHER_API_URL = 'http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0';
+const WEATHER_API_KEY =
+  '4b268ed7fd6465178564984b72bb2dea2f8658d79bede6993bed1aadba63b6e7';
+const WEATHER_API_URL =
+  'https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0';
 
 class WeatherAPI {
   /**
@@ -93,7 +95,9 @@ class WeatherAPI {
       const { nx, ny } = this.convertToGrid(latitude, longitude);
       const { baseDate, baseTime } = this.getBaseDateTime();
 
-      console.log(`[Weather] 날씨 조회: 좌표(${latitude}, ${longitude}) -> 격자(${nx}, ${ny}), 기준시각: ${baseDate} ${baseTime}`);
+      console.log(
+        `[Weather] 날씨 조회: 좌표(${latitude}, ${longitude}) -> 격자(${nx}, ${ny}), 기준시각: ${baseDate} ${baseTime}`,
+      );
 
       const url = `${WEATHER_API_URL}/getUltraSrtNcst?serviceKey=${WEATHER_API_KEY}&numOfRows=10&pageNo=1&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${nx}&ny=${ny}`;
 
@@ -102,8 +106,13 @@ class WeatherAPI {
 
       console.log('[Weather] API 응답:', data);
 
-      if (!data?.response?.body?.items?.item || data.response.body.items.item.length === 0) {
-        console.warn('[Weather] 기상청 API 응답 데이터가 없습니다. 기본값을 반환합니다.');
+      if (
+        !data?.response?.body?.items?.item ||
+        data.response.body.items.item.length === 0
+      ) {
+        console.warn(
+          '[Weather] 기상청 API 응답 데이터가 없습니다. 기본값을 반환합니다.',
+        );
         return this.getDefaultWeather();
       }
 
@@ -115,13 +124,15 @@ class WeatherAPI {
       };
 
       // 응답 데이터 파싱
-      items.forEach((item) => {
+      items.forEach(item => {
         switch (item.category) {
           case 'REH': // 습도 (%)
             weatherData.humidity = parseFloat(item.obsrValue);
             break;
           case 'VEC': // 풍향 (deg)
-            weatherData.windDirection = this.convertWindDirection(parseFloat(item.obsrValue));
+            weatherData.windDirection = this.convertWindDirection(
+              parseFloat(item.obsrValue),
+            );
             break;
           case 'WSD': // 풍속 (m/s)
             weatherData.windSpeed = parseFloat(item.obsrValue);
