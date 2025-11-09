@@ -97,7 +97,7 @@ class FireDetectionAPI {
     const {
       status,
       has_fire,
-      has_smoke,
+      
       boxes,
       scene_analysis,
       annotated_image,
@@ -106,7 +106,7 @@ class FireDetectionAPI {
     } = apiResult;
 
     // 화재 감지 여부
-    const fireDetected = has_fire || has_smoke;
+    const fireDetected = has_fire ;
 
     // 카테고리 매핑
     let category = 'no_fire';
