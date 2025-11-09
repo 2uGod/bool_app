@@ -35,6 +35,7 @@ const MainCameraScreen = ({ navigation }) => {
     requestCameraPermission();
     requestLocationPermission();
     checkServerStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 위치 정보 주기적으로 갱신
@@ -42,7 +43,8 @@ const MainCameraScreen = ({ navigation }) => {
     if (hasLocationPermission && !currentLocation) {
       getCurrentLocation();
     }
-  }, [hasLocationPermission]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasLocationPermission, currentLocation]);
 
   // 서버 상태 확인
   const checkServerStatus = async () => {
@@ -63,6 +65,7 @@ const MainCameraScreen = ({ navigation }) => {
       }, 2000);
     }
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive]);
 
   const reverseGeocode = async (latitude, longitude) => {
@@ -190,11 +193,11 @@ const MainCameraScreen = ({ navigation }) => {
 
       if (Platform.OS === 'android') {
         // Android: 이미 권한이 있는지 먼저 확인
-        const hasPermission = await PermissionsAndroid.check(
+        const locationPermissionGranted = await PermissionsAndroid.check(
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
         );
 
-        if (hasPermission) {
+        if (locationPermissionGranted) {
           console.log('✅ Location permission already granted');
           setHasLocationPermission(true);
           getCurrentLocation();

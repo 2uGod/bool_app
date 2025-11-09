@@ -10,11 +10,7 @@ import {
   Platform,
   PermissionsAndroid,
 } from 'react-native';
-import {
-  Camera,
-  useCameraDevices,
-  useFrameProcessor,
-} from 'react-native-vision-camera';
+import { Camera, useCameraDevices } from 'react-native-vision-camera';
 import Geolocation from 'react-native-geolocation-service';
 import DetectionOverlay from '../components/DetectionOverlay';
 import { saveDetection } from '../services/StorageService';
@@ -22,10 +18,6 @@ import YoloInferenceService from '../services/YoloInferenceService';
 import FireDetectionAPI from '../services/FireDetectionAPI';
 
 const { width, height } = Dimensions.get('window');
-
-// 시뮬레이터 감지
-const isSimulator =
-  Platform.OS === 'ios' && !Platform.isPad && Platform.isTesting !== true;
 
 const DetectionScreen = () => {
   const [hasPermission, setHasPermission] = useState(false);
@@ -68,7 +60,8 @@ const DetectionScreen = () => {
     }, 3000);
 
     return () => clearTimeout(timeout);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [device, devices]);
 
   // 감지가 활성화될 때마다 위치 정보를 갱신
   useEffect(() => {
@@ -82,6 +75,7 @@ const DetectionScreen = () => {
 
       return () => clearInterval(locationInterval);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, hasLocationPermission]);
 
   useEffect(() => {
@@ -93,6 +87,7 @@ const DetectionScreen = () => {
       }, 2000); // 2초마다 분석
     }
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, simulatorMode]);
 
   const checkServerHealth = async () => {
@@ -141,7 +136,9 @@ const DetectionScreen = () => {
         const granted = result === 'granted' || result === 'restricted';
         setHasLocationPermission(granted);
         if (granted) {
-          console.log('✅ Location permission granted, getting current location...');
+          console.log(
+            '✅ Location permission granted, getting current location...',
+          );
           setTimeout(() => getCurrentLocation(), 500); // 약간의 지연 추가
         } else {
           console.log('❌ Location permission denied');
@@ -162,15 +159,17 @@ const DetectionScreen = () => {
           },
         );
         console.log('📍 Android location permission:', granted);
-        const hasPermission = granted === PermissionsAndroid.RESULTS.GRANTED;
-        setHasLocationPermission(hasPermission);
-        if (hasPermission) {
-          console.log('✅ Location permission granted, getting current location...');
+        const locationGranted = granted === PermissionsAndroid.RESULTS.GRANTED;
+        setHasLocationPermission(locationGranted);
+        if (locationGranted) {
+          console.log(
+            '✅ Location permission granted, getting current location...',
+          );
           setTimeout(() => getCurrentLocation(), 500); // 약간의 지연 추가
         } else {
           console.log('❌ Location permission denied');
         }
-        return hasPermission;
+        return locationGranted;
       }
     } catch (error) {
       console.error('❌ Location permission error:', error);
@@ -207,14 +206,20 @@ const DetectionScreen = () => {
           console.log('⚠️ No address found in Kakao response');
         }
       } else {
-        console.error('❌ Kakao API error:', response.status, await response.text());
+        console.error(
+          '❌ Kakao API error:',
+          response.status,
+          await response.text(),
+        );
       }
     } catch (error) {
       console.error('❌ Reverse geocoding error:', error);
     }
 
     // 역지오코딩 실패 시 좌표 반환
-    const fallbackAddress = `위도: ${latitude.toFixed(4)}, 경도: ${longitude.toFixed(4)}`;
+    const fallbackAddress = `위도: ${latitude.toFixed(
+      4,
+    )}, 경도: ${longitude.toFixed(4)}`;
     console.log('⚠️ Using fallback address:', fallbackAddress);
     return fallbackAddress;
   };
@@ -228,7 +233,7 @@ const DetectionScreen = () => {
         console.log('✅ Location received:', {
           latitude: latitude.toFixed(6),
           longitude: longitude.toFixed(6),
-          accuracy: `${accuracy?.toFixed(0)}m`
+          accuracy: `${accuracy?.toFixed(0)}m`,
         });
 
         // 역지오코딩으로 주소 가져오기
@@ -244,7 +249,7 @@ const DetectionScreen = () => {
       error => {
         console.error('❌ Get location error:', {
           code: error.code,
-          message: error.message
+          message: error.message,
         });
 
         // 에러 코드별 처리
@@ -492,7 +497,9 @@ const DetectionScreen = () => {
           <View
             style={[
               styles.statusIndicator,
-              { backgroundColor: isActive ? '#00FF00' : '#FF0000' },
+              isActive
+                ? styles.statusIndicatorActive
+                : styles.statusIndicatorInactive,
             ]}
           />
           <Text style={styles.statusText}>
@@ -503,7 +510,7 @@ const DetectionScreen = () => {
         <TouchableOpacity
           style={[
             styles.toggleButton,
-            { backgroundColor: isActive ? '#FF4500' : '#00AA00' },
+            isActive ? styles.toggleButtonActive : styles.toggleButtonInactive,
           ]}
           onPress={toggleDetection}
         >
@@ -527,7 +534,7 @@ const DetectionScreen = () => {
                 📍 위치: {currentLocation.address}
               </Text>
             )}
-            <Text style={[styles.infoText, { fontSize: 11, opacity: 0.7 }]}>
+            <Text style={[styles.infoText, styles.infoTextSmall]}>
               {serverAvailable && useFlaskAPI
                 ? '🌐 Flask API'
                 : modelLoaded && useRealModel
@@ -627,6 +634,12 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginRight: 10,
   },
+  statusIndicatorActive: {
+    backgroundColor: '#00FF00',
+  },
+  statusIndicatorInactive: {
+    backgroundColor: '#FF0000',
+  },
   statusText: {
     color: '#fff',
     fontSize: 16,
@@ -641,6 +654,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
+  },
+  toggleButtonActive: {
+    backgroundColor: '#FF4500',
+  },
+  toggleButtonInactive: {
+    backgroundColor: '#00AA00',
   },
   toggleButtonText: {
     color: '#fff',
@@ -663,6 +682,10 @@ const styles = StyleSheet.create({
     marginVertical: 2,
     textAlign: 'center',
     flexWrap: 'wrap',
+  },
+  infoTextSmall: {
+    fontSize: 11,
+    opacity: 0.7,
   },
 });
 
