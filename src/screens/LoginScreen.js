@@ -269,12 +269,13 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 50,
+    marginTop: 30,
+    marginBottom: 20,
   },
   logoImage: {
     width: 200,
     height: 80,
-    marginBottom: 20,
+    marginBottom: 15,
   },
   slogan: {
     fontSize: 15,
@@ -298,7 +299,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   emailInput: {
-    flex: 1,
+    flex: 0.6,
     backgroundColor: '#fff',
     borderRadius: 8,
     padding: 15,
@@ -312,7 +313,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
   },
   domainSelector: {
-    flex: 0.3,
+    flex: 0.5,
     backgroundColor: '#fff',
     borderRadius: 8,
     padding: 15,
