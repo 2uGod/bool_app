@@ -26,6 +26,7 @@ const MainCameraScreen = ({ navigation }) => {
   const [serverOnline, setServerOnline] = useState(true); // 서버 연결 상태
   const [currentLocation, setCurrentLocation] = useState(null); // 현재 위치
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
+  const [reportSent, setReportSent] = useState(false); // 신고 완료 플래그
 
   const camera = useRef(null);
   const devices = useCameraDevices();
@@ -260,7 +261,7 @@ const MainCameraScreen = ({ navigation }) => {
   };
 
   const detectAndReport = async () => {
-    if (isProcessing || !camera.current) return;
+    if (isProcessing || !camera.current || reportSent) return;
 
     setIsProcessing(true);
 
@@ -308,31 +309,37 @@ const MainCameraScreen = ({ navigation }) => {
 
         console.log('✅ Detection result:', data);
 
-        // 화재 감지 여부 (연기는 제외, 화재만 신고)
-        const detected = data.has_fire;
-        setFireDetected(detected);
-
-        // 위험도
-        setRiskLevel(Math.round(data.confidence || 0));
-
-        // 화재 유형
+        // 화재 유형 매핑
         const typeMap = {
           wildfire: '🌲 산불',
           urban_fire: '🏙️ 도심 화재',
           industrial_fire: '🏭 공장 화재',
+          smoke: '💨 연기',
         };
+
+        // 연기 또는 화재 감지 여부 (화면 표시용)
+        const hasFireOrSmoke = data.has_fire || data.has_smoke;
+        setFireDetected(hasFireOrSmoke);
+
+        // 위험도
+        setRiskLevel(Math.round(data.confidence || 0));
+
+        // 감지된 유형 (화재 또는 연기)
         setFireType(typeMap[data.status] || data.status);
 
-        // 화재 감지 시 알림 및 촬영 중지 (연기는 신고하지 않음)
+        // 화재 감지 시에만 신고 및 촬영 중지
         if (data.has_fire && data.confidence >= 70) {
-          // 촬영 자동 중지
+          // 신고 완료 플래그 설정 (중복 신고 방지)
+          setReportSent(true);
+
+          // 촬영 즉시 중지
           setIsActive(false);
 
           Alert.alert(
-            '🔥 화재 감지!',
+            '🔥 화재 신고 완료!',
             `${typeMap[data.status]}\n위험도: ${Math.round(
               data.confidence,
-            )}%\n\n화재가 신고되어 촬영이 중지되었습니다.`,
+            )}%\n\n소방서에 신고가 접수되어 촬영이 중지되었습니다.`,
             [
               {
                 text: '신고 내역 보기',
@@ -341,6 +348,11 @@ const MainCameraScreen = ({ navigation }) => {
               { text: '확인' },
             ],
           );
+        }
+        // 연기만 감지된 경우 (신고하지 않고 표시만)
+        else if (data.has_smoke) {
+          console.log('💨 연기 감지됨 (신고하지 않음)');
+          // 연기는 화면에만 표시되고 신고되지 않음
         }
       } else {
         console.error('❌ Detection failed:', result.error);
@@ -393,9 +405,11 @@ const MainCameraScreen = ({ navigation }) => {
   const toggleDetection = () => {
     setIsActive(!isActive);
     if (!isActive) {
+      // 감지 시작 시 상태 초기화
       setFireDetected(false);
       setRiskLevel(0);
       setFireType('');
+      setReportSent(false); // 신고 플래그 초기화
     }
   };
 
@@ -471,21 +485,35 @@ const MainCameraScreen = ({ navigation }) => {
               riskLevel >= 80 ? styles.alertBoxHigh : styles.alertBoxMedium,
             ]}
           >
-            <Text style={styles.alertEmoji}>🔥</Text>
-            <Text style={styles.alertText}>화재 감지됨!</Text>
+            <Text style={styles.alertEmoji}>
+              {fireType === '💨 연기' ? '💨' : '🔥'}
+            </Text>
+            <Text style={styles.alertText}>
+              {fireType === '💨 연기' ? '연기 감지됨!' : '화재 감지됨!'}
+            </Text>
 
             {/* 위험도 */}
             <View style={styles.riskInfoContainer}>
-              <Text style={styles.riskLabel}>예상 화재 위험도</Text>
+              <Text style={styles.riskLabel}>
+                {fireType === '💨 연기' ? '연기 감지 확률' : '예상 화재 위험도'}
+              </Text>
               <Text style={styles.riskValue}>{riskLevel}%</Text>
               {fireType && (
                 <Text style={styles.fireTypeInAlert}>{fireType}</Text>
               )}
             </View>
 
-            <Text style={styles.alertSubtext}>
-              소방서에 자동 신고되었습니다
-            </Text>
+            {/* 연기일 때와 화재일 때 메시지 구분 */}
+            {fireType !== '💨 연기' && (
+              <Text style={styles.alertSubtext}>
+                소방서에 자동 신고되었습니다
+              </Text>
+            )}
+            {fireType === '💨 연기' && (
+              <Text style={styles.alertSubtext}>
+                연기가 감지되었습니다 (신고되지 않음)
+              </Text>
+            )}
 
             <TouchableOpacity
               style={styles.alertCloseButton}

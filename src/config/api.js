@@ -6,8 +6,8 @@
 // ⚠️ IP 주소 변경 시 여기만 수정하세요
 // AWS EC2 Public IP로 설정됨
 // NestJS Backend Server (포트 3000)
-// EC2 Public IP: 13.125.225.201
-export const API_BASE_URL = 'http://13.125.224.210:3000';
+// EC2 Public IP: 3.34.148.22
+export const API_BASE_URL = 'http://3.34.148.22:3000';
 
 // API 엔드포인트
 export const API_ENDPOINTS = {
