@@ -61,17 +61,17 @@ class UserAPI {
       return {success: true, result: data};
     } catch (error) {
       console.error('❌ Detect and report failed:', error);
-      
+
       // 네트워크 연결 오류 체크
-      if (error.message.includes('Network request failed') || 
+      if (error.message.includes('Network request failed') ||
           error.message.includes('Failed to fetch') ||
           error.message.includes('ECONNREFUSED')) {
         return {
-          success: false, 
+          success: false,
           error: `서버에 연결할 수 없습니다.\n\n확인 사항:\n1. 백엔드 서버가 실행 중인지 확인 (포트 3000)\n2. 같은 WiFi 네트워크에 연결되어 있는지 확인\n3. IP 주소가 올바른지 확인 (현재: ${API_BASE_URL})`
         };
       }
-      
+
       return {success: false, error: error.message};
     }
   }

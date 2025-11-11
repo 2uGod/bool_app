@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import UserAPI from '../services/UserAPI';
 import FireDetectionAPI from '../services/FireDetectionAPI';
 import BackendHealthAPI from '../services/BackendHealthAPI';
+import DetectionOverlay from '../components/DetectionOverlay';
 
 const MainCameraScreen = ({ navigation }) => {
   const [hasPermission, setHasPermission] = useState(false);
@@ -27,6 +28,7 @@ const MainCameraScreen = ({ navigation }) => {
   const [currentLocation, setCurrentLocation] = useState(null); // 현재 위치
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
   const [reportSent, setReportSent] = useState(false); // 신고 완료 플래그
+  const [detectionResult, setDetectionResult] = useState(null); // 감지 결과 (바운딩 박스용)
 
   const camera = useRef(null);
   const devices = useCameraDevices();
@@ -60,10 +62,10 @@ const MainCameraScreen = ({ navigation }) => {
   useEffect(() => {
     let interval;
     if (isActive && camera.current) {
-      // 2초마다 화재 감지
+      // 3.5초마다 화재 감지 (실시간 감지와 서버 부하의 최적 균형)
       interval = setInterval(() => {
         detectAndReport();
-      }, 2000);
+      }, 3500);
     }
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -266,11 +268,12 @@ const MainCameraScreen = ({ navigation }) => {
     setIsProcessing(true);
 
     try {
-      // 사진 촬영
+      // 사진 촬영 (해상도 최적화)
       const photo = await camera.current.takePhoto({
-        qualityPrioritization: 'speed',
+        qualityPrioritization: 'speed', // 속도 우선
         flash: 'off',
         enableShutterSound: false,
+        skipMetadata: true, // 메타데이터 제거로 파일 크기 감소
       });
 
       console.log('📸 Photo captured:', photo.path);
@@ -326,6 +329,29 @@ const MainCameraScreen = ({ navigation }) => {
 
         // 감지된 유형 (화재 또는 연기)
         setFireType(typeMap[data.status] || data.status);
+
+        // 바운딩 박스 데이터 저장
+        if (hasFireOrSmoke && data.boxes && data.boxes.length > 0) {
+          const detections = data.boxes.map(box => ({
+            bbox: {
+              x: box.x1 || 0,
+              y: box.y1 || 0,
+              width: (box.x2 - box.x1) || 0,
+              height: (box.y2 - box.y1) || 0,
+            },
+            confidence: box.confidence || 0,
+            class: box.class || 'fire',
+          }));
+
+          setDetectionResult({
+            fireDetected: hasFireOrSmoke,
+            detections: detections,
+            category: data.status,
+          });
+        } else {
+          // 화재/연기가 없으면 detection 결과 초기화
+          setDetectionResult(null);
+        }
 
         // 화재 감지 시에만 신고 및 촬영 중지
         if (data.has_fire && data.confidence >= 70) {
@@ -410,6 +436,7 @@ const MainCameraScreen = ({ navigation }) => {
       setRiskLevel(0);
       setFireType('');
       setReportSent(false); // 신고 플래그 초기화
+      setDetectionResult(null); // 바운딩 박스 초기화
     }
   };
 
@@ -445,6 +472,12 @@ const MainCameraScreen = ({ navigation }) => {
         device={device}
         isActive={isActive && hasPermission}
         photo={true}
+      />
+
+      {/* 바운딩 박스 오버레이 */}
+      <DetectionOverlay
+        detectionResult={detectionResult}
+        isProcessing={isProcessing}
       />
 
       {/* 위치 표시 (상단) */}
