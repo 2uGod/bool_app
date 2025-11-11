@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,14 +7,16 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  PermissionsAndroid,
 } from 'react-native';
-import {Camera, useCameraDevices} from 'react-native-vision-camera';
+import { Camera, useCameraDevices } from 'react-native-vision-camera';
+import Geolocation from 'react-native-geolocation-service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import UserAPI from '../services/UserAPI';
 import FireDetectionAPI from '../services/FireDetectionAPI';
 import BackendHealthAPI from '../services/BackendHealthAPI';
 
-const MainCameraScreen = ({navigation}) => {
+const MainCameraScreen = ({ navigation }) => {
   const [hasPermission, setHasPermission] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -22,6 +24,9 @@ const MainCameraScreen = ({navigation}) => {
   const [riskLevel, setRiskLevel] = useState(0); // 위험도
   const [fireType, setFireType] = useState(''); // 화재 유형
   const [serverOnline, setServerOnline] = useState(true); // 서버 연결 상태
+  const [currentLocation, setCurrentLocation] = useState(null); // 현재 위치
+  const [hasLocationPermission, setHasLocationPermission] = useState(false);
+  const [reportSent, setReportSent] = useState(false); // 신고 완료 플래그
 
   const camera = useRef(null);
   const devices = useCameraDevices();
@@ -29,14 +34,24 @@ const MainCameraScreen = ({navigation}) => {
 
   useEffect(() => {
     requestCameraPermission();
+    requestLocationPermission();
     checkServerStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 위치 정보 주기적으로 갱신
+  useEffect(() => {
+    if (hasLocationPermission && !currentLocation) {
+      getCurrentLocation();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasLocationPermission, currentLocation]);
 
   // 서버 상태 확인
   const checkServerStatus = async () => {
     const result = await BackendHealthAPI.checkHealth();
     setServerOnline(result.success);
-    
+
     if (!result.success) {
       console.warn('⚠️ 백엔드 서버 연결 실패:', result.error);
     }
@@ -51,10 +66,186 @@ const MainCameraScreen = ({navigation}) => {
       }, 2000);
     }
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive]);
+
+  const reverseGeocode = async (latitude, longitude) => {
+    try {
+      console.log('🌍 Reverse geocoding:', latitude, longitude);
+      const KAKAO_API_KEY = 'e09f9f4073488d1ef17cef8618960d76';
+      const url = `https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${longitude}&y=${latitude}`;
+      console.log('📡 Kakao API URL:', url);
+
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `KakaoAK ${KAKAO_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('📡 Kakao API response status:', response.status);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(
+          '✅ Kakao API response data:',
+          JSON.stringify(data, null, 2),
+        );
+
+        if (data.documents && data.documents.length > 0) {
+          const doc = data.documents[0];
+
+          // 도로명 주소 우선
+          if (doc.road_address) {
+            const road = doc.road_address;
+            // 도로명 주소 전체를 구성 (지번 번호까지 포함)
+            let addressParts = [
+              road.region_1depth_name,
+              road.region_2depth_name,
+              road.region_3depth_name,
+              road.road_name,
+            ].filter(Boolean);
+
+            // 건물번호가 있으면 추가
+            if (road.building_name) {
+              addressParts.push(road.building_name);
+            } else if (road.main_building_no) {
+              addressParts.push(road.main_building_no);
+            }
+
+            const addressString = addressParts.join(' ').trim();
+            console.log('✅ Road address:', addressString);
+            return addressString;
+          }
+          // 지번 주소
+          else if (doc.address) {
+            const address = doc.address;
+            const addressString =
+              `${address.region_1depth_name} ${address.region_2depth_name} ${address.region_3depth_name}`.trim();
+            console.log('✅ Jibun address:', addressString);
+            return addressString;
+          }
+        } else {
+          console.warn('⚠️ No documents in Kakao API response');
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Kakao API error:', response.status, errorText);
+      }
+    } catch (error) {
+      console.error('❌ Reverse geocoding error:', error);
+    }
+
+    // 역지오코딩 실패 시 좌표 반환
+    const fallback = `위도: ${latitude.toFixed(4)}, 경도: ${longitude.toFixed(
+      4,
+    )}`;
+    console.log('⚠️ Using fallback address:', fallback);
+    return fallback;
+  };
+
+  const getCurrentLocation = async () => {
+    console.log('📍 Getting current location...');
+    Geolocation.getCurrentPosition(
+      async position => {
+        const { latitude, longitude } = position.coords;
+        console.log('✅ Current location:', latitude, longitude);
+
+        const address = await reverseGeocode(latitude, longitude);
+        console.log('✅ Address:', address);
+
+        const locationData = {
+          latitude,
+          longitude,
+          address,
+        };
+
+        setCurrentLocation(locationData);
+      },
+      error => {
+        console.error('❌ Get location error:', error.code, error.message);
+        setCurrentLocation({
+          latitude: 37.5665,
+          longitude: 126.978,
+          address: '위치 정보를 가져올 수 없습니다',
+        });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 20000,
+        maximumAge: 0,
+        forceRequestLocation: true,
+      },
+    );
+  };
+
+  const requestLocationPermission = async () => {
+    try {
+      if (Platform.OS === 'ios') {
+        // iOS: 이미 권한이 있는지 먼저 확인
+        const authStatus = await Geolocation.requestAuthorization('whenInUse');
+        const granted = authStatus === 'granted';
+        setHasLocationPermission(granted);
+        if (granted) {
+          getCurrentLocation();
+        }
+        return granted;
+      }
+
+      if (Platform.OS === 'android') {
+        // Android: 이미 권한이 있는지 먼저 확인
+        const locationPermissionGranted = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        );
+
+        if (locationPermissionGranted) {
+          console.log('✅ Location permission already granted');
+          setHasLocationPermission(true);
+          getCurrentLocation();
+          return true;
+        }
+
+        // 권한이 없으면 요청
+        console.log('📍 Requesting location permission...');
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: '위치 권한 필요',
+            message:
+              '화재 신고 시 정확한 위치 정보를 전송하기 위해 위치 권한이 필요합니다.',
+            buttonNeutral: '나중에',
+            buttonNegative: '거부',
+            buttonPositive: '허용',
+          },
+        );
+        const permissionGranted =
+          granted === PermissionsAndroid.RESULTS.GRANTED;
+        setHasLocationPermission(permissionGranted);
+        if (permissionGranted) {
+          getCurrentLocation();
+        }
+        return permissionGranted;
+      }
+    } catch (error) {
+      console.error('Location permission error:', error);
+      setHasLocationPermission(false);
+      return false;
+    }
+  };
 
   const requestCameraPermission = async () => {
     try {
+      // 이미 권한이 있는지 먼저 확인
+      const currentPermission = await Camera.getCameraPermissionStatus();
+
+      if (currentPermission === 'granted') {
+        console.log('✅ Camera permission already granted');
+        setHasPermission(true);
+        return;
+      }
+
+      // 권한이 없으면 요청
+      console.log('📸 Requesting camera permission...');
       const permission = await Camera.requestCameraPermission();
       setHasPermission(permission === 'granted');
 
@@ -70,7 +261,7 @@ const MainCameraScreen = ({navigation}) => {
   };
 
   const detectAndReport = async () => {
-    if (isProcessing || !camera.current) return;
+    if (isProcessing || !camera.current || reportSent) return;
 
     setIsProcessing(true);
 
@@ -92,11 +283,11 @@ const MainCameraScreen = ({navigation}) => {
         return;
       }
 
-      // 위치 정보 (TODO: 실제 GPS 사용)
-      const locationData = {
-        latitude: 37.5,
-        longitude: 127.0,
-        address: '경기 용인시 처인구 명지로 116',
+      // 위치 정보 (실제 GPS 사용)
+      const locationData = currentLocation || {
+        latitude: 37.5665,
+        longitude: 126.978,
+        address: '위치 정보 없음',
       };
 
       // 서버 상태 재확인 (연결 실패 시)
@@ -118,48 +309,61 @@ const MainCameraScreen = ({navigation}) => {
 
         console.log('✅ Detection result:', data);
 
-        // 화재 감지 여부 (연기는 제외, 화재만 신고)
-        const detected = data.has_fire;
-        setFireDetected(detected);
-
-        // 위험도
-        setRiskLevel(Math.round(data.confidence || 0));
-
-        // 화재 유형
+        // 화재 유형 매핑
         const typeMap = {
           wildfire: '🌲 산불',
           urban_fire: '🏙️ 도심 화재',
           industrial_fire: '🏭 공장 화재',
+          smoke: '💨 연기',
         };
+
+        // 연기 또는 화재 감지 여부 (화면 표시용)
+        const hasFireOrSmoke = data.has_fire || data.has_smoke;
+        setFireDetected(hasFireOrSmoke);
+
+        // 위험도
+        setRiskLevel(Math.round(data.confidence || 0));
+
+        // 감지된 유형 (화재 또는 연기)
         setFireType(typeMap[data.status] || data.status);
 
-        // 화재 감지 시 알림 및 촬영 중지 (연기는 신고하지 않음)
+        // 화재 감지 시에만 신고 및 촬영 중지
         if (data.has_fire && data.confidence >= 70) {
-          // 촬영 자동 중지
+          // 신고 완료 플래그 설정 (중복 신고 방지)
+          setReportSent(true);
+
+          // 촬영 즉시 중지
           setIsActive(false);
 
           Alert.alert(
-            '🔥 화재 감지!',
-            `${typeMap[data.status]}\n위험도: ${Math.round(data.confidence)}%\n\n화재가 신고되어 촬영이 중지되었습니다.`,
+            '🔥 화재 신고 완료!',
+            `${typeMap[data.status]}\n위험도: ${Math.round(
+              data.confidence,
+            )}%\n\n소방서에 신고가 접수되어 촬영이 중지되었습니다.`,
             [
               {
                 text: '신고 내역 보기',
                 onPress: () => navigation.navigate('Reports'),
               },
-              {text: '확인'},
+              { text: '확인' },
             ],
           );
+        }
+        // 연기만 감지된 경우 (신고하지 않고 표시만)
+        else if (data.has_smoke) {
+          console.log('💨 연기 감지됨 (신고하지 않음)');
+          // 연기는 화면에만 표시되고 신고되지 않음
         }
       } else {
         console.error('❌ Detection failed:', result.error);
         setServerOnline(false); // 서버 오프라인으로 설정
-        
+
         // 네트워크 연결 오류인지 확인
-        const isNetworkError = result.error && (
-          result.error.includes('서버에 연결할 수 없습니다') ||
-          result.error.includes('Network request failed') ||
-          result.error.includes('Failed to fetch')
-        );
+        const isNetworkError =
+          result.error &&
+          (result.error.includes('서버에 연결할 수 없습니다') ||
+            result.error.includes('Network request failed') ||
+            result.error.includes('Failed to fetch'));
 
         if (isNetworkError) {
           Alert.alert(
@@ -179,12 +383,15 @@ const MainCameraScreen = ({navigation}) => {
                   setFireType(simResult.category);
                 },
               },
-              {text: '확인'},
+              { text: '확인' },
             ],
           );
         } else {
           // 기타 오류
-          Alert.alert('화재 감지 실패', result.error || '알 수 없는 오류가 발생했습니다');
+          Alert.alert(
+            '화재 감지 실패',
+            result.error || '알 수 없는 오류가 발생했습니다',
+          );
         }
       }
     } catch (error) {
@@ -198,9 +405,11 @@ const MainCameraScreen = ({navigation}) => {
   const toggleDetection = () => {
     setIsActive(!isActive);
     if (!isActive) {
+      // 감지 시작 시 상태 초기화
       setFireDetected(false);
       setRiskLevel(0);
       setFireType('');
+      setReportSent(false); // 신고 플래그 초기화
     }
   };
 
@@ -210,7 +419,8 @@ const MainCameraScreen = ({navigation}) => {
         <Text style={styles.permissionText}>카메라 권한이 필요합니다</Text>
         <TouchableOpacity
           style={styles.button}
-          onPress={requestCameraPermission}>
+          onPress={requestCameraPermission}
+        >
           <Text style={styles.buttonText}>권한 요청</Text>
         </TouchableOpacity>
       </View>
@@ -240,7 +450,22 @@ const MainCameraScreen = ({navigation}) => {
       {/* 위치 표시 (상단) */}
       <View style={styles.topOverlay}>
         <View style={styles.locationContainer}>
-          <Text style={styles.locationText}>📍 경기 용인시 처인구 명지로 116</Text>
+          <Text style={styles.locationText}>
+            📍{' '}
+            {currentLocation && currentLocation.address
+              ? currentLocation.address
+              : '위치 정보 가져오는 중...'}
+          </Text>
+          {!hasLocationPermission && (
+            <TouchableOpacity
+              style={styles.locationPermissionButton}
+              onPress={requestLocationPermission}
+            >
+              <Text style={styles.locationPermissionText}>
+                위치 권한 허용하기
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* 서버 연결 상태 표시 */}
@@ -254,25 +479,46 @@ const MainCameraScreen = ({navigation}) => {
       {/* 화재 감지 상태 (위험도 + 신고 정보 통합) */}
       {fireDetected && (
         <View style={styles.alertOverlay}>
-          <View style={[
-            styles.alertBox,
-            riskLevel >= 80 ? styles.alertBoxHigh : styles.alertBoxMedium
-          ]}>
-            <Text style={styles.alertEmoji}>🔥</Text>
-            <Text style={styles.alertText}>화재 감지됨!</Text>
+          <View
+            style={[
+              styles.alertBox,
+              riskLevel >= 80 ? styles.alertBoxHigh : styles.alertBoxMedium,
+            ]}
+          >
+            <Text style={styles.alertEmoji}>
+              {fireType === '💨 연기' ? '💨' : '🔥'}
+            </Text>
+            <Text style={styles.alertText}>
+              {fireType === '💨 연기' ? '연기 감지됨!' : '화재 감지됨!'}
+            </Text>
 
             {/* 위험도 */}
             <View style={styles.riskInfoContainer}>
-              <Text style={styles.riskLabel}>예상 화재 위험도</Text>
+              <Text style={styles.riskLabel}>
+                {fireType === '💨 연기' ? '연기 감지 확률' : '예상 화재 위험도'}
+              </Text>
               <Text style={styles.riskValue}>{riskLevel}%</Text>
-              {fireType && <Text style={styles.fireTypeInAlert}>{fireType}</Text>}
+              {fireType && (
+                <Text style={styles.fireTypeInAlert}>{fireType}</Text>
+              )}
             </View>
 
-            <Text style={styles.alertSubtext}>소방서에 자동 신고되었습니다</Text>
+            {/* 연기일 때와 화재일 때 메시지 구분 */}
+            {fireType !== '💨 연기' && (
+              <Text style={styles.alertSubtext}>
+                소방서에 자동 신고되었습니다
+              </Text>
+            )}
+            {fireType === '💨 연기' && (
+              <Text style={styles.alertSubtext}>
+                연기가 감지되었습니다 (신고되지 않음)
+              </Text>
+            )}
 
             <TouchableOpacity
               style={styles.alertCloseButton}
-              onPress={() => setFireDetected(false)}>
+              onPress={() => setFireDetected(false)}
+            >
               <Text style={styles.alertCloseText}>닫기</Text>
             </TouchableOpacity>
           </View>
@@ -288,14 +534,13 @@ const MainCameraScreen = ({navigation}) => {
             isProcessing && styles.detectionButtonProcessing,
           ]}
           onPress={toggleDetection}
-          disabled={isProcessing}>
+          disabled={isProcessing}
+        >
           {isProcessing ? (
             <ActivityIndicator size="large" color="#fff" />
           ) : (
             <View style={styles.buttonContent}>
-              <Text style={styles.buttonEmoji}>
-                {isActive ? '⏸️' : '🔥'}
-              </Text>
+              <Text style={styles.buttonEmoji}>{isActive ? '⏸️' : '🔥'}</Text>
               <Text style={styles.buttonLabel}>
                 {isActive ? '감지 중지' : '감지 시작'}
               </Text>
@@ -360,6 +605,19 @@ const styles = StyleSheet.create({
   locationText: {
     color: '#fff',
     fontSize: 14,
+    textAlign: 'center',
+  },
+  locationPermissionButton: {
+    backgroundColor: '#FF4500',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  locationPermissionText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   alertOverlay: {
     position: 'absolute',

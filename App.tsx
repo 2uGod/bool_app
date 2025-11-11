@@ -1,9 +1,9 @@
-import React, {useState, useEffect} from 'react';
-import {NavigationContainer} from '@react-navigation/native';
-import {createNativeStackNavigator} from '@react-navigation/native-stack';
-import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import {SafeAreaProvider} from 'react-native-safe-area-context';
-import {View, Text, StyleSheet, ActivityIndicator} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Screens
@@ -41,15 +41,16 @@ const MainTabs = () => {
         headerTitleStyle: {
           fontWeight: 'bold',
         },
-      }}>
+      }}
+    >
       <Tab.Screen
         name="Detection"
         component={MainCameraScreen}
         options={{
           tabBarLabel: '화재 감지',
-          tabBarIcon: ({color}) => (
+          tabBarIcon: ({ color }) => (
             <View style={styles.iconContainer}>
-              <Text style={[styles.icon, {color}]}>🔥</Text>
+              <Text style={[styles.icon, { color }]}>🔥</Text>
             </View>
           ),
           headerTitle: 'BOOL 화재 감지',
@@ -60,9 +61,9 @@ const MainTabs = () => {
         component={ReportsScreen}
         options={{
           tabBarLabel: '신고 내역',
-          tabBarIcon: ({color}) => (
+          tabBarIcon: ({ color }) => (
             <View style={styles.iconContainer}>
-              <Text style={[styles.icon, {color}]}>📋</Text>
+              <Text style={[styles.icon, { color }]}>📋</Text>
             </View>
           ),
           headerTitle: '신고 내역',
@@ -73,9 +74,9 @@ const MainTabs = () => {
         component={MyPageScreen}
         options={{
           tabBarLabel: '마이페이지',
-          tabBarIcon: ({color}) => (
+          tabBarIcon: ({ color }) => (
             <View style={styles.iconContainer}>
-              <Text style={[styles.icon, {color}]}>👤</Text>
+              <Text style={[styles.icon, { color }]}>👤</Text>
             </View>
           ),
           headerTitle: '마이페이지',
@@ -119,19 +120,11 @@ const App = () => {
           initialRouteName={isLoggedIn ? 'Main' : 'Login'}
           screenOptions={{
             headerShown: false,
-          }}>
+          }}
+        >
           {/* Auth Stack */}
           <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen
-            name="Register"
-            component={RegisterScreen}
-            options={{
-              headerShown: true,
-              headerTitle: '회원가입',
-              headerStyle: {backgroundColor: '#FF4500'},
-              headerTintColor: '#fff',
-            }}
-          />
+          <Stack.Screen name="Register" component={RegisterScreen} />
           <Stack.Screen name="FindAccount" component={FindAccountScreen} />
 
           {/* Main Stack */}
@@ -148,7 +141,7 @@ const App = () => {
             options={{
               headerShown: true,
               headerTitle: '설정',
-              headerStyle: {backgroundColor: '#FF4500'},
+              headerStyle: { backgroundColor: '#FF4500' },
               headerTintColor: '#fff',
             }}
           />

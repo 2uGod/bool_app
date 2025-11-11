@@ -4,6 +4,7 @@
  */
 
 import {API_BASE_URL} from '../config/api';
+import WeatherAPI from './WeatherAPI';
 
 class FireDetectionAPI {
   /**
@@ -57,6 +58,16 @@ class FireDetectionAPI {
       formData.append('latitude', lat.toString());
       formData.append('longitude', lng.toString());
       formData.append('address', addr);
+
+      // 날씨 정보 가져오기 (위치 기반)
+      console.log('🌤️ 날씨 정보 조회 중...');
+      const weather = await WeatherAPI.getWeather(lat, lng);
+      console.log('✅ 날씨 정보:', weather);
+
+      // 날씨 정보 추가
+      formData.append('humidity', weather.humidity.toString());
+      formData.append('windDirection', weather.windDirection);
+      formData.append('windSpeed', weather.windSpeed.toString());
 
       // API 호출 (NestJS를 통한 화재 감지)
       const url = `${API_BASE_URL}/api/reports/detect`;

@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,11 +10,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthAPI from '../services/AuthAPI';
 
-const RegisterScreen = ({navigation}) => {
+const RegisterScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
@@ -68,12 +69,30 @@ const RegisterScreen = ({navigation}) => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}>
+      style={styles.container}
+    >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled">
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.content}>
-          <Text style={styles.title}>회원가입</Text>
+          {/* 로고 */}
+          <View style={styles.logoContainer}>
+            <Image
+              source={require('../../assets/applogo.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+          </View>
+
+          {/* 뒤로가기 버튼 */}
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backIcon}>←</Text>
+            <Text style={styles.backText}>회원가입</Text>
+          </TouchableOpacity>
 
           {/* 이름 */}
           <View style={styles.inputContainer}>
@@ -87,25 +106,12 @@ const RegisterScreen = ({navigation}) => {
             />
           </View>
 
-          {/* 전화번호 */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>전화번호</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="010-XXXX-XXXX"
-              placeholderTextColor="#999"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-            />
-          </View>
-
           {/* 이메일 */}
           <View style={styles.inputContainer}>
             <Text style={styles.label}>이메일</Text>
             <TextInput
               style={styles.input}
-              placeholder="email@example.com"
+              placeholder="이메일을 입력해 주세요"
               placeholderTextColor="#999"
               value={email}
               onChangeText={setEmail}
@@ -113,6 +119,24 @@ const RegisterScreen = ({navigation}) => {
               autoCapitalize="none"
               autoCorrect={false}
             />
+          </View>
+
+          {/* 전화번호 */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>전화번호</Text>
+            <View style={styles.phoneContainer}>
+              <TextInput
+                style={styles.phoneInput}
+                placeholder="010 - #### - ####"
+                placeholderTextColor="#999"
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+              />
+              <TouchableOpacity style={styles.verifyButton}>
+                <Text style={styles.verifyButtonText}>인증번호</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* 비밀번호 */}
@@ -144,36 +168,39 @@ const RegisterScreen = ({navigation}) => {
           {/* 약관 동의 */}
           <TouchableOpacity
             style={styles.termsContainer}
-            onPress={() => setAgreedToTerms(!agreedToTerms)}>
+            onPress={() => setAgreedToTerms(!agreedToTerms)}
+          >
             <View
-              style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}>
+              style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}
+            >
               {agreedToTerms && <Text style={styles.checkmark}>✓</Text>}
             </View>
             <Text style={styles.termsText}>
-              개인정보 수집 및 이용에 동의합니다
+              약관에 동의하십니까?{' '}
+              <Text style={styles.termsLink}>(약관 보러가기)</Text>
             </Text>
           </TouchableOpacity>
 
-          {/* 버튼 */}
+          {/* 다음 버튼 */}
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
             onPress={handleRegister}
-            disabled={loading}>
+            disabled={loading}
+          >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>회원가입</Text>
+              <Text style={styles.buttonText}>다음</Text>
             )}
           </TouchableOpacity>
 
           {/* 로그인으로 이동 */}
-          <TouchableOpacity
-            style={styles.loginLink}
-            onPress={() => navigation.goBack()}>
-            <Text style={styles.loginLinkText}>
-              이미 계정이 있으신가요? 로그인
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.loginLink}>
+            <Text style={styles.loginLinkText}>이미 계정이 있으신가요? </Text>
+            <TouchableOpacity onPress={() => navigation.goBack()}>
+              <Text style={styles.loginLinkBold}>로그인</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -189,65 +216,118 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   content: {
-    padding: 30,
+    paddingHorizontal: 30,
+    paddingTop: Platform.OS === 'ios' ? 20 : 20,
+    paddingBottom: 40,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
+  logoContainer: {
+    alignItems: 'center',
+    marginTop: 20,
     marginBottom: 30,
   },
+  logoImage: {
+    width: 120,
+    height: 50,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 30,
+    paddingVertical: 5,
+  },
+  backIcon: {
+    fontSize: 22,
+    color: '#333',
+    marginRight: 8,
+  },
+  backText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: 18,
   },
   label: {
     fontSize: 14,
-    color: '#666',
+    color: '#333',
     marginBottom: 8,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   input: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
     borderRadius: 8,
     padding: 15,
     fontSize: 16,
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
+  phoneContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  phoneInput: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 15,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    marginRight: 10,
+  },
+  verifyButton: {
+    backgroundColor: '#EB2F30',
+    borderRadius: 8,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+  },
+  verifyButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   termsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 30,
+    marginTop: 5,
+    marginBottom: 25,
   },
   checkbox: {
-    width: 24,
-    height: 24,
+    width: 22,
+    height: 22,
     borderWidth: 2,
     borderColor: '#ddd',
     borderRadius: 4,
     marginRight: 10,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#fff',
   },
   checkboxChecked: {
-    backgroundColor: '#FF4500',
-    borderColor: '#FF4500',
+    backgroundColor: '#EB2F30',
+    borderColor: '#EB2F30',
   },
   checkmark: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
   },
   termsText: {
     fontSize: 14,
-    color: '#666',
+    color: '#333',
+    flex: 1,
+  },
+  termsLink: {
+    color: '#EB2F30',
+    fontWeight: '600',
   },
   button: {
-    backgroundColor: '#FF4500',
+    backgroundColor: '#EB2F30',
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
+    marginTop: 5,
   },
   buttonText: {
     color: '#fff',
@@ -258,12 +338,19 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   loginLink: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 20,
+    justifyContent: 'center',
+    marginTop: 25,
   },
   loginLinkText: {
     color: '#666',
     fontSize: 14,
+  },
+  loginLinkBold: {
+    color: '#EB2F30',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });
 

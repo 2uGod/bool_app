@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,17 +8,16 @@ import {
   Dimensions,
   ActivityIndicator,
   Platform,
+  PermissionsAndroid,
 } from 'react-native';
-import {Camera, useCameraDevices, useFrameProcessor} from 'react-native-vision-camera';
+import { Camera, useCameraDevices } from 'react-native-vision-camera';
+import Geolocation from 'react-native-geolocation-service';
 import DetectionOverlay from '../components/DetectionOverlay';
-import {saveDetection} from '../services/StorageService';
+import { saveDetection } from '../services/StorageService';
 import YoloInferenceService from '../services/YoloInferenceService';
 import FireDetectionAPI from '../services/FireDetectionAPI';
 
-const {width, height} = Dimensions.get('window');
-
-// 시뮬레이터 감지
-const isSimulator = Platform.OS === 'ios' && !Platform.isPad && Platform.isTesting !== true;
+const { width, height } = Dimensions.get('window');
 
 const DetectionScreen = () => {
   const [hasPermission, setHasPermission] = useState(false);
@@ -31,6 +30,8 @@ const DetectionScreen = () => {
   const [useRealModel, setUseRealModel] = useState(true);
   const [serverAvailable, setServerAvailable] = useState(false);
   const [useFlaskAPI, setUseFlaskAPI] = useState(true); // Flask API 사용 여부
+  const [currentLocation, setCurrentLocation] = useState(null);
+  const [hasLocationPermission, setHasLocationPermission] = useState(false);
 
   const camera = useRef(null);
   const devices = useCameraDevices();
@@ -47,6 +48,7 @@ const DetectionScreen = () => {
     loadYoloModel();
 
     requestCameraPermission();
+    requestLocationPermission();
 
     // 3초 후에도 카메라가 없으면 시뮬레이터 모드 활성화
     const timeout = setTimeout(() => {
@@ -58,7 +60,23 @@ const DetectionScreen = () => {
     }, 3000);
 
     return () => clearTimeout(timeout);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [device, devices]);
+
+  // 감지가 활성화될 때마다 위치 정보를 갱신
+  useEffect(() => {
+    if (isActive && hasLocationPermission) {
+      getCurrentLocation();
+
+      // 30초마다 위치 정보 업데이트
+      const locationInterval = setInterval(() => {
+        getCurrentLocation();
+      }, 30000);
+
+      return () => clearInterval(locationInterval);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive, hasLocationPermission]);
 
   useEffect(() => {
     let interval;
@@ -69,6 +87,7 @@ const DetectionScreen = () => {
       }, 2000); // 2초마다 분석
     }
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, simulatorMode]);
 
   const checkServerHealth = async () => {
@@ -109,6 +128,157 @@ const DetectionScreen = () => {
     }
   };
 
+  const requestLocationPermission = async () => {
+    try {
+      if (Platform.OS === 'ios') {
+        const result = await Geolocation.requestAuthorization('whenInUse');
+        console.log('📍 iOS location permission:', result);
+        const granted = result === 'granted' || result === 'restricted';
+        setHasLocationPermission(granted);
+        if (granted) {
+          console.log(
+            '✅ Location permission granted, getting current location...',
+          );
+          setTimeout(() => getCurrentLocation(), 500); // 약간의 지연 추가
+        } else {
+          console.log('❌ Location permission denied');
+        }
+        return granted;
+      }
+
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: '위치 권한 필요',
+            message:
+              '화재 신고 시 정확한 위치 정보를 전송하기 위해 위치 권한이 필요합니다.',
+            buttonNeutral: '나중에',
+            buttonNegative: '거부',
+            buttonPositive: '허용',
+          },
+        );
+        console.log('📍 Android location permission:', granted);
+        const locationGranted = granted === PermissionsAndroid.RESULTS.GRANTED;
+        setHasLocationPermission(locationGranted);
+        if (locationGranted) {
+          console.log(
+            '✅ Location permission granted, getting current location...',
+          );
+          setTimeout(() => getCurrentLocation(), 500); // 약간의 지연 추가
+        } else {
+          console.log('❌ Location permission denied');
+        }
+        return locationGranted;
+      }
+    } catch (error) {
+      console.error('❌ Location permission error:', error);
+      setHasLocationPermission(false);
+      return false;
+    }
+  };
+
+  const reverseGeocode = async (latitude, longitude) => {
+    try {
+      console.log('🗺️ Reverse geocoding:', { latitude, longitude });
+
+      // Kakao REST API를 사용한 역지오코딩
+      const KAKAO_API_KEY = 'e09f9f4073488d1ef17cef8618960d76';
+      const url = `https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${longitude}&y=${latitude}`;
+
+      console.log('📡 Calling Kakao API...');
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `KakaoAK ${KAKAO_API_KEY}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Kakao API response:', data);
+
+        if (data.documents && data.documents.length > 0) {
+          const address = data.documents[0].address;
+          const fullAddress = `${address.region_1depth_name} ${address.region_2depth_name} ${address.region_3depth_name}`;
+          console.log('📍 Converted address:', fullAddress);
+          return fullAddress;
+        } else {
+          console.log('⚠️ No address found in Kakao response');
+        }
+      } else {
+        console.error(
+          '❌ Kakao API error:',
+          response.status,
+          await response.text(),
+        );
+      }
+    } catch (error) {
+      console.error('❌ Reverse geocoding error:', error);
+    }
+
+    // 역지오코딩 실패 시 좌표 반환
+    const fallbackAddress = `위도: ${latitude.toFixed(
+      4,
+    )}, 경도: ${longitude.toFixed(4)}`;
+    console.log('⚠️ Using fallback address:', fallbackAddress);
+    return fallbackAddress;
+  };
+
+  const getCurrentLocation = async () => {
+    console.log('🌍 Requesting current location...');
+
+    Geolocation.getCurrentPosition(
+      async position => {
+        const { latitude, longitude, accuracy } = position.coords;
+        console.log('✅ Location received:', {
+          latitude: latitude.toFixed(6),
+          longitude: longitude.toFixed(6),
+          accuracy: `${accuracy?.toFixed(0)}m`,
+        });
+
+        // 역지오코딩으로 주소 가져오기
+        const address = await reverseGeocode(latitude, longitude);
+        console.log('🏠 Address:', address);
+
+        setCurrentLocation({
+          latitude,
+          longitude,
+          address,
+        });
+      },
+      error => {
+        console.error('❌ Get location error:', {
+          code: error.code,
+          message: error.message,
+        });
+
+        // 에러 코드별 처리
+        let errorMessage = '위치 정보를 가져올 수 없습니다';
+        if (error.code === 1) {
+          errorMessage = '위치 권한이 거부되었습니다';
+        } else if (error.code === 2) {
+          errorMessage = '위치를 확인할 수 없습니다';
+        } else if (error.code === 3) {
+          errorMessage = '위치 요청 시간 초과';
+        }
+
+        // 위치를 가져올 수 없으면 기본값 사용
+        setCurrentLocation({
+          latitude: 37.5665,
+          longitude: 126.978,
+          address: errorMessage,
+        });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 10000,
+        forceRequestLocation: true,
+        showLocationDialog: true,
+      },
+    );
+  };
+
   const requestCameraPermission = async () => {
     try {
       console.log('Requesting camera permission...');
@@ -120,7 +290,7 @@ const DetectionScreen = () => {
         Alert.alert(
           '카메라 권한 필요',
           '설정 > FireDetectionApp > 카메라 권한을 활성화해주세요.',
-          [{text: '확인'}]
+          [{ text: '확인' }],
         );
       }
     } catch (error) {
@@ -151,10 +321,14 @@ const DetectionScreen = () => {
           });
 
           console.log('📸 Photo captured:', photo.path);
+          console.log('📍 Current location:', currentLocation);
           console.log('🚀 Calling Flask API...');
 
-          // Flask API 호출
-          detection = await FireDetectionAPI.detectFire(photo.path, false);
+          // Flask API 호출 (위치 정보 전달)
+          detection = await FireDetectionAPI.detectFire(
+            photo.path,
+            currentLocation,
+          );
 
           console.log('✅ Flask API detection result:', detection);
         } catch (apiError) {
@@ -191,7 +365,7 @@ const DetectionScreen = () => {
 
       // 박스 좌표를 화면 크기에 맞게 스케일링
       if (detection.detections && detection.imageSize) {
-        const {width: imgWidth, height: imgHeight} = detection.imageSize;
+        const { width: imgWidth, height: imgHeight } = detection.imageSize;
         const scaleX = width / imgWidth;
         const scaleY = height / imgHeight;
 
@@ -272,7 +446,8 @@ const DetectionScreen = () => {
         <Text style={styles.permissionText}>카메라 권한이 필요합니다</Text>
         <TouchableOpacity
           style={styles.permissionButton}
-          onPress={requestCameraPermission}>
+          onPress={requestCameraPermission}
+        >
           <Text style={styles.buttonText}>권한 요청</Text>
         </TouchableOpacity>
       </View>
@@ -314,6 +489,7 @@ const DetectionScreen = () => {
       <DetectionOverlay
         detectionResult={detectionResult}
         isProcessing={isProcessing}
+        location={currentLocation}
       />
 
       <View style={styles.controlsContainer}>
@@ -321,7 +497,9 @@ const DetectionScreen = () => {
           <View
             style={[
               styles.statusIndicator,
-              {backgroundColor: isActive ? '#00FF00' : '#FF0000'},
+              isActive
+                ? styles.statusIndicatorActive
+                : styles.statusIndicatorInactive,
             ]}
           />
           <Text style={styles.statusText}>
@@ -332,9 +510,10 @@ const DetectionScreen = () => {
         <TouchableOpacity
           style={[
             styles.toggleButton,
-            {backgroundColor: isActive ? '#FF4500' : '#00AA00'},
+            isActive ? styles.toggleButtonActive : styles.toggleButtonInactive,
           ]}
-          onPress={toggleDetection}>
+          onPress={toggleDetection}
+        >
           <Text style={styles.toggleButtonText}>
             {isActive ? '감지 중지' : '감지 시작'}
           </Text>
@@ -350,7 +529,12 @@ const DetectionScreen = () => {
                 신뢰도: {(detectionResult.confidence * 100).toFixed(1)}%
               </Text>
             )}
-            <Text style={[styles.infoText, {fontSize: 11, opacity: 0.7}]}>
+            {currentLocation && (
+              <Text style={styles.infoText}>
+                📍 위치: {currentLocation.address}
+              </Text>
+            )}
+            <Text style={[styles.infoText, styles.infoTextSmall]}>
               {serverAvailable && useFlaskAPI
                 ? '🌐 Flask API'
                 : modelLoaded && useRealModel
@@ -360,7 +544,6 @@ const DetectionScreen = () => {
           </View>
         )}
       </View>
-
     </View>
   );
 };
@@ -451,6 +634,12 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginRight: 10,
   },
+  statusIndicatorActive: {
+    backgroundColor: '#00FF00',
+  },
+  statusIndicatorInactive: {
+    backgroundColor: '#FF0000',
+  },
   statusText: {
     color: '#fff',
     fontSize: 16,
@@ -462,9 +651,15 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     elevation: 5,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
+  },
+  toggleButtonActive: {
+    backgroundColor: '#FF4500',
+  },
+  toggleButtonInactive: {
+    backgroundColor: '#00AA00',
   },
   toggleButtonText: {
     color: '#fff',
@@ -487,6 +682,10 @@ const styles = StyleSheet.create({
     marginVertical: 2,
     textAlign: 'center',
     flexWrap: 'wrap',
+  },
+  infoTextSmall: {
+    fontSize: 11,
+    opacity: 0.7,
   },
 });
 
