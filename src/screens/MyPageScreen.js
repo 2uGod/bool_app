@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,16 +7,18 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthAPI from '../services/AuthAPI';
 
-const MyPageScreen = ({navigation}) => {
+const MyPageScreen = ({ navigation }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadUserData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadUserData = async () => {
@@ -51,7 +53,10 @@ const MyPageScreen = ({navigation}) => {
         setUser(profileResult.profile);
 
         // 서버 데이터로 AsyncStorage 업데이트
-        await AsyncStorage.setItem('user', JSON.stringify(profileResult.profile));
+        await AsyncStorage.setItem(
+          'user',
+          JSON.stringify(profileResult.profile),
+        );
       } else {
         console.warn('⚠️ Profile fetch failed:', profileResult.error);
 
@@ -60,11 +65,10 @@ const MyPageScreen = ({navigation}) => {
           console.error('❌ No local user data available');
           Alert.alert(
             '프로필 로드 실패',
-            `서버에서 프로필을 불러올 수 없습니다.\n오류: ${profileResult.error || '알 수 없는 오류'}`,
-            [
-              { text: '재시도', onPress: loadUserData },
-              { text: '확인' }
-            ]
+            `서버에서 프로필을 불러올 수 없습니다.\n오류: ${
+              profileResult.error || '알 수 없는 오류'
+            }`,
+            [{ text: '재시도', onPress: loadUserData }, { text: '확인' }],
           );
         }
       }
@@ -76,20 +80,16 @@ const MyPageScreen = ({navigation}) => {
       // 에러 발생 시에도 로컬 데이터 유지
       setLoading(false);
 
-      Alert.alert(
-        '오류',
-        '사용자 정보를 불러오는 중 오류가 발생했습니다.',
-        [
-          { text: '재시도', onPress: loadUserData },
-          { text: '확인' }
-        ]
-      );
+      Alert.alert('오류', '사용자 정보를 불러오는 중 오류가 발생했습니다.', [
+        { text: '재시도', onPress: loadUserData },
+        { text: '확인' },
+      ]);
     }
   };
 
   const handleLogout = async () => {
     Alert.alert('로그아웃', '로그아웃 하시겠습니까?', [
-      {text: '취소', style: 'cancel'},
+      { text: '취소', style: 'cancel' },
       {
         text: '확인',
         onPress: async () => {
@@ -104,144 +104,232 @@ const MyPageScreen = ({navigation}) => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FF4500" />
+        <ActivityIndicator size="large" color="#E57373" />
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      {/* 프로필 헤더 */}
-      <View style={styles.profileHeader}>
-        <View style={styles.profileIcon}>
-          <Text style={styles.profileEmoji}>👤</Text>
+    <View style={styles.container}>
+      {/* 헤더 */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.navigate('Detection')}
+        >
+          <Text style={styles.backIcon}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>설정</Text>
+        <View style={styles.headerRight} />
+      </View>
+
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* 프로필 카드 */}
+        <View style={styles.profileCard}>
+          <View style={styles.profileIconContainer}>
+            <View style={styles.profileIcon}>
+              <Text style={styles.profileEmoji}>👤</Text>
+            </View>
+            <View style={styles.editBadge}>
+              <Text style={styles.editBadgeText}>✏️</Text>
+            </View>
+          </View>
+          <Text style={styles.profileName}>{user?.name || '사용자'} 님</Text>
         </View>
-        <Text style={styles.userName}>{user?.name || '사용자'} 님</Text>
-        <Text style={styles.email}>{user?.email || ''}</Text>
-      </View>
 
-      {/* 메뉴 */}
-      <View style={styles.menuContainer}>
-        <MenuItem
-          icon="📝"
-          title="개인 정보 설정 및 수정"
-          onPress={() => navigation.navigate('ProfileEdit')}
-        />
-        <MenuItem
-          icon="⚙️"
-          title="설정"
-          onPress={() => navigation.navigate('Settings')}
-        />
-        <MenuItem
-          icon="🚪"
-          title="로그아웃"
-          onPress={handleLogout}
-          isDestructive
-        />
-      </View>
+        {/* 메뉴 리스트 */}
+        <View style={styles.menuList}>
+          <MenuItem
+            icon="👤"
+            title="계정"
+            subtitle="개인정보 설정 및 수정"
+            onPress={() => navigation.navigate('ProfileEdit')}
+          />
+          <MenuItem
+            icon="📍"
+            title="대피소 및 피난처"
+            subtitle="현재 지역 대피소 및 피난처 위치 확인"
+            onPress={() => Alert.alert('알림', '준비 중인 기능입니다.')}
+          />
+          <MenuItem
+            icon="🔔"
+            title="문의 및 건의사항"
+            subtitle="capstonedesign2@mju.ac.kr"
+            onPress={() => Alert.alert('알림', '준비 중인 기능입니다.')}
+          />
+          <MenuItem
+            icon="🚪"
+            title="회원탈퇴"
+            subtitle="회원 탈퇴 시 관련된 모든 정보가 삭제됩니다"
+            onPress={handleLogout}
+            isDestructive
+          />
+        </View>
 
-      {/* 버전 정보 */}
-      <View style={styles.versionContainer}>
-        <Text style={styles.versionText}>현재 버전 v1.0.0</Text>
-      </View>
-    </ScrollView>
+        {/* 버전 정보 */}
+        <View style={styles.versionContainer}>
+          <Text style={styles.versionText}>현재 버전 ver 1.0.0</Text>
+        </View>
+      </ScrollView>
+    </View>
   );
 };
 
-const MenuItem = ({icon, title, onPress, isDestructive}) => (
+const MenuItem = ({ icon, title, subtitle, onPress, isDestructive }) => (
   <TouchableOpacity style={styles.menuItem} onPress={onPress}>
-    <View style={styles.menuItemLeft}>
+    <View style={styles.menuIconContainer}>
       <Text style={styles.menuIcon}>{icon}</Text>
+    </View>
+    <View style={styles.menuTextContainer}>
       <Text
-        style={[
-          styles.menuTitle,
-          isDestructive && styles.menuTitleDestructive,
-        ]}>
+        style={[styles.menuTitle, isDestructive && styles.menuTitleDestructive]}
+      >
         {title}
       </Text>
+      {subtitle && (
+        <Text
+          style={[
+            styles.menuSubtitle,
+            isDestructive && styles.menuSubtitleDestructive,
+          ]}
+        >
+          {subtitle}
+        </Text>
+      )}
     </View>
-    <Text style={styles.menuArrow}>›</Text>
   </TouchableOpacity>
 );
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#FAFAFA',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#FAFAFA',
   },
-  profileHeader: {
-    backgroundColor: '#fff',
-    padding: 30,
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFB3BA',
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 15,
+    paddingHorizontal: 20,
   },
-  profileIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#FF4500',
+  backButton: {
+    padding: 5,
+    width: 40,
+  },
+  backIcon: {
+    fontSize: 24,
+    color: '#333',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  headerRight: {
+    width: 40,
+  },
+  content: {
+    flex: 1,
+  },
+  profileCard: {
+    backgroundColor: '#fff',
+    paddingVertical: 30,
+    paddingHorizontal: 20,
     alignItems: 'center',
-    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  profileIconContainer: {
+    position: 'relative',
     marginBottom: 15,
   },
+  profileIcon: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#B0B0B0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   profileEmoji: {
-    fontSize: 40,
+    fontSize: 36,
+    color: '#fff',
   },
-  userName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
-  },
-  email: {
-    fontSize: 14,
-    color: '#666',
-  },
-  menuContainer: {
+  editBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: '#fff',
-    marginTop: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+  },
+  editBadgeText: {
+    fontSize: 12,
+  },
+  profileName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  menuList: {
+    backgroundColor: '#fff',
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 20,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#F5F5F5',
   },
-  menuItemLeft: {
-    flexDirection: 'row',
+  menuIconContainer: {
+    width: 40,
+    height: 40,
     alignItems: 'center',
-    flex: 1,
-  },
-  menuIcon: {
-    fontSize: 20,
+    justifyContent: 'center',
     marginRight: 15,
   },
+  menuIcon: {
+    fontSize: 24,
+  },
+  menuTextContainer: {
+    flex: 1,
+  },
   menuTitle: {
-    fontSize: 16,
+    fontSize: 15,
+    fontWeight: '600',
     color: '#333',
+    marginBottom: 4,
   },
   menuTitleDestructive: {
-    color: '#FF4500',
+    color: '#333',
   },
-  menuArrow: {
-    fontSize: 24,
-    color: '#ccc',
+  menuSubtitle: {
+    fontSize: 12,
+    color: '#999',
+    lineHeight: 16,
+  },
+  menuSubtitleDestructive: {
+    color: '#999',
   },
   versionContainer: {
-    padding: 20,
+    paddingVertical: 30,
     alignItems: 'center',
   },
   versionText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#999',
   },
 });

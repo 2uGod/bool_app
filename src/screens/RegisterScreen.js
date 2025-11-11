@@ -92,7 +92,7 @@ const RegisterScreen = ({ navigation }) => {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Text style={styles.backIcon}>&lt;</Text>
+            <Text style={styles.backIcon}>← </Text>
             <Text style={styles.backText}>회원가입</Text>
           </TouchableOpacity>
 
@@ -136,7 +136,7 @@ const RegisterScreen = ({ navigation }) => {
                 keyboardType="phone-pad"
               />
               <TouchableOpacity style={styles.verifyButton}>
-                <Text style={styles.verifyButtonText}>인증번호</Text>
+                <Text style={styles.verifyButtonText}>인증</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -174,7 +174,10 @@ const RegisterScreen = ({ navigation }) => {
               onPress={() => setAgreedToTerms(!agreedToTerms)}
             >
               <View
-                style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}
+                style={[
+                  styles.checkbox,
+                  agreedToTerms && styles.checkboxChecked,
+                ]}
               >
                 {agreedToTerms && <Text style={styles.checkmark}>✓</Text>}
               </View>
@@ -218,7 +221,9 @@ const RegisterScreen = ({ navigation }) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>개인정보 수집 및 이용 동의서</Text>
+              <Text style={styles.modalTitle}>
+                개인정보 수집 및 이용 동의서
+              </Text>
               <TouchableOpacity
                 onPress={() => setShowTermsModal(false)}
                 style={styles.closeButton}
@@ -228,46 +233,63 @@ const RegisterScreen = ({ navigation }) => {
             </View>
 
             <ScrollView style={styles.modalContent}>
-              <Text style={styles.articleTitle}>제1조 (개인정보 수집 및 이용 목적)</Text>
+              <Text style={styles.articleTitle}>
+                제1조 (개인정보 수집 및 이용 목적)
+              </Text>
               <Text style={styles.articleText}>
-                회사는 다음과 같은 목적으로 이용자의 개인정보를 수집 및 이용합니다.
+                회사는 다음과 같은 목적으로 이용자의 개인정보를 수집 및
+                이용합니다.
               </Text>
               <Text style={styles.articleText}>
                 • 서비스 제공: 위치 기반 날씨 정보 제공 및 화재 감지 기능 구현
               </Text>
               <Text style={styles.articleText}>
-                • 긴급 구조 요청: 화재 감지 시 소방서 측에 이용자의 신원 및 위치 정보 전달
+                • 긴급 구조 요청: 화재 감지 시 소방서 측에 이용자의 신원 및 위치
+                정보 전달
               </Text>
               <Text style={styles.articleText}>
-                • 회원 관리: 서비스 이용에 따른 본인 식별, 가입 및 탈퇴 의사 확인
+                • 회원 관리: 서비스 이용에 따른 본인 식별, 가입 및 탈퇴 의사
+                확인
               </Text>
               <Text style={styles.articleText}>
                 • 서비스 개선: 앱의 안정성 확보 및 기능 오류 개선
               </Text>
 
-              <Text style={styles.articleTitle}>제2조 (수집하는 개인정보 항목)</Text>
+              <Text style={styles.articleTitle}>
+                제2조 (수집하는 개인정보 항목)
+              </Text>
               <Text style={styles.articleText}>
-                회사는 원활한 서비스 제공을 위해 아래와 같은 개인정보를 수집합니다.
+                회사는 원활한 서비스 제공을 위해 아래와 같은 개인정보를
+                수집합니다.
               </Text>
               <Text style={styles.articleText}>
                 • 필수 항목: 이름, 휴대전화 번호, 주소
               </Text>
               <Text style={styles.articleText}>
-                • 민감 정보: GPS 데이터를 활용한 위치 정보, 카메라 데이터를 활용한 화재 감지 정보
+                • 민감 정보: GPS 데이터를 활용한 위치 정보, 카메라 데이터를
+                활용한 화재 감지 정보
               </Text>
               <Text style={styles.articleText}>
-                • 자동 수집 정보: 기기 모델명, OS 정보 등 서비스 이용 과정에서 자동으로 생성되는 정보
-              </Text>
-
-              <Text style={styles.articleTitle}>제3조 (개인정보의 보유 및 이용 기간)</Text>
-              <Text style={styles.articleText}>
-                이용자의 개인정보는 회원 탈퇴 시 또는 동의 철회 시까지 보유 및 이용됩니다.{'\n'}
-                다만, 관련 법령의 규정에 따라 보존할 필요가 있는 경우 해당 법령이 정한 기간 동안 안전하게 보관합니다.
+                • 자동 수집 정보: 기기 모델명, OS 정보 등 서비스 이용 과정에서
+                자동으로 생성되는 정보
               </Text>
 
-              <Text style={styles.articleTitle}>제4조 (개인정보 제3자 제공에 대한 동의)</Text>
+              <Text style={styles.articleTitle}>
+                제3조 (개인정보의 보유 및 이용 기간)
+              </Text>
               <Text style={styles.articleText}>
-                회사는 이용자의 생명과 안전을 위해 긴급 상황 발생 시 아래와 같이 개인정보를 제공합니다.
+                이용자의 개인정보는 회원 탈퇴 시 또는 동의 철회 시까지 보유 및
+                이용됩니다.{'\n'}
+                다만, 관련 법령의 규정에 따라 보존할 필요가 있는 경우 해당
+                법령이 정한 기간 동안 안전하게 보관합니다.
+              </Text>
+
+              <Text style={styles.articleTitle}>
+                제4조 (개인정보 제3자 제공에 대한 동의)
+              </Text>
+              <Text style={styles.articleText}>
+                회사는 이용자의 생명과 안전을 위해 긴급 상황 발생 시 아래와 같이
+                개인정보를 제공합니다.
               </Text>
               <Text style={styles.articleText}>
                 • 제공받는 자: 관할 소방서 및 긴급구조 기관
@@ -279,9 +301,13 @@ const RegisterScreen = ({ navigation }) => {
                 • 제공 목적: 화재 신고 접수 및 신속한 출동을 위함
               </Text>
 
-              <Text style={styles.articleTitle}>제5조 (동의를 거부할 권리 및 불이익)</Text>
+              <Text style={styles.articleTitle}>
+                제5조 (동의를 거부할 권리 및 불이익)
+              </Text>
               <Text style={styles.articleText}>
-                이용자는 개인정보 수집 및 이용에 대한 동의를 거부할 권리가 있습니다. 필수 항목에 대한 동의를 거부할 경우, 앱의 회원 가입 및 핵심 기능(화재 감지, 긴급 구조 요청) 이용이 불가능합니다.
+                이용자는 개인정보 수집 및 이용에 대한 동의를 거부할 권리가
+                있습니다. 필수 항목에 대한 동의를 거부할 경우, 앱의 회원 가입 및
+                핵심 기능(화재 감지, 긴급 구조 요청) 이용이 불가능합니다.
               </Text>
             </ScrollView>
 
@@ -503,7 +529,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   modalButton: {
-    backgroundColor: '#EB2F30',
+    backgroundColor: '#000000',
     borderRadius: 8,
     padding: 15,
     alignItems: 'center',

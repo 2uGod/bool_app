@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import FindAccountScreen from './src/screens/FindAccountScreen';
+import HomeScreen from './src/screens/HomeScreen';
 import MainCameraScreen from './src/screens/MainCameraScreen';
 import ReportsScreen from './src/screens/ReportsScreen';
 import ReportDetailScreen from './src/screens/ReportDetailScreen';
@@ -44,19 +45,6 @@ const MainTabs = () => {
       }}
     >
       <Tab.Screen
-        name="Detection"
-        component={MainCameraScreen}
-        options={{
-          tabBarLabel: '화재 감지',
-          tabBarIcon: ({ color }) => (
-            <View style={styles.iconContainer}>
-              <Text style={[styles.icon, { color }]}>🔥</Text>
-            </View>
-          ),
-          headerTitle: 'BOOL 화재 감지',
-        }}
-      />
-      <Tab.Screen
         name="Reports"
         component={ReportsScreen}
         options={{
@@ -70,6 +58,19 @@ const MainTabs = () => {
         }}
       />
       <Tab.Screen
+        name="Detection"
+        component={HomeScreen}
+        options={{
+          tabBarLabel: '화재 감지',
+          tabBarIcon: ({ color }) => (
+            <View style={styles.iconContainer}>
+              <Text style={[styles.icon, { color }]}>🔥</Text>
+            </View>
+          ),
+          headerShown: false,
+        }}
+      />
+      <Tab.Screen
         name="MyPage"
         component={MyPageScreen}
         options={{
@@ -79,7 +80,7 @@ const MainTabs = () => {
               <Text style={[styles.icon, { color }]}>👤</Text>
             </View>
           ),
-          headerTitle: '마이페이지',
+          headerShown: false,
         }}
       />
     </Tab.Navigator>
@@ -127,8 +128,20 @@ const App = () => {
           <Stack.Screen name="Register" component={RegisterScreen} />
           <Stack.Screen name="FindAccount" component={FindAccountScreen} />
 
-          {/* Main Stack */}
+          {/* Home Screen */}
+          <Stack.Screen name="Home" component={HomeScreen} />
+
+          {/* Main Tab Navigator (includes Detection, Reports, MyPage) */}
           <Stack.Screen name="Main" component={MainTabs} />
+
+          {/* Individual Screens (accessible from Home) */}
+          <Stack.Screen
+            name="Camera"
+            component={MainCameraScreen}
+            options={{
+              headerShown: false,
+            }}
+          />
 
           {/* Detail Screens */}
           <Stack.Screen name="ReportDetail" component={ReportDetailScreen} />
