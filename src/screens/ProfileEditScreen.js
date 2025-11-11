@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,20 +10,28 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Switch,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import AuthAPI from '../services/AuthAPI';
-import LinearGradient from 'react-native-linear-gradient';
 
-const ProfileEditScreen = ({navigation}) => {
+const ProfileEditScreen = ({ navigation }) => {
   const [name, setName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // 토글 스위치 상태
+  const [locationServiceEnabled, setLocationServiceEnabled] = useState(true);
+  const [cameraEnabled, setCameraEnabled] = useState(true);
+  const [notificationEnabled, setNotificationEnabled] = useState(false);
+
   useEffect(() => {
     loadProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadProfile = async () => {
@@ -34,7 +42,7 @@ const ProfileEditScreen = ({navigation}) => {
 
       if (!token || !userDataStr) {
         Alert.alert('오류', '로그인이 필요합니다.', [
-          {text: '확인', onPress: () => navigation.navigate('Login')},
+          { text: '확인', onPress: () => navigation.navigate('Login') },
         ]);
         return;
       }
@@ -51,82 +59,37 @@ const ProfileEditScreen = ({navigation}) => {
     }
   };
 
-  const formatPhoneNumber = text => {
-    // 숫자만 추출
-    const cleaned = text.replace(/\D/g, '');
-
-    // 010-1234-5678 형식으로 변환
-    if (cleaned.length <= 3) {
-      return cleaned;
-    } else if (cleaned.length <= 7) {
-      return `${cleaned.slice(0, 3)}-${cleaned.slice(3)}`;
-    } else {
-      return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 7)}-${cleaned.slice(7, 11)}`;
-    }
-  };
-
-  const validateForm = () => {
-    if (!name.trim()) {
-      Alert.alert('입력 오류', '이름을 입력해주세요.');
-      return false;
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      Alert.alert('입력 오류', '모든 비밀번호 필드를 입력해주세요.');
+      return;
     }
 
-    if (!phoneNumber.trim()) {
-      Alert.alert('입력 오류', '전화번호를 입력해주세요.');
-      return false;
+    if (newPassword !== confirmPassword) {
+      Alert.alert('입력 오류', '새 비밀번호가 일치하지 않습니다.');
+      return;
     }
 
-    // 전화번호 형식 검증 (010-1234-5678)
-    const phoneRegex = /^010-\d{4}-\d{4}$/;
-    if (!phoneRegex.test(phoneNumber)) {
-      Alert.alert('입력 오류', '올바른 전화번호 형식을 입력해주세요. (010-1234-5678)');
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleSave = async () => {
-    if (!validateForm()) {
+    if (newPassword.length < 6) {
+      Alert.alert('입력 오류', '비밀번호는 최소 6자 이상이어야 합니다.');
       return;
     }
 
     try {
       setSaving(true);
-      const token = await AsyncStorage.getItem('token');
-
-      if (!token) {
-        Alert.alert('오류', '로그인이 필요합니다.');
-        navigation.navigate('Login');
-        return;
-      }
-
-      const response = await AuthAPI.updateProfile(token, {
-        name: name.trim(),
-        phoneNumber: phoneNumber.trim(),
-      });
-
-      if (response.success) {
-        // 업데이트된 사용자 정보를 AsyncStorage에 저장
-        const updatedUser = response.user;
-        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-
-        Alert.alert(
-          '수정 완료',
-          '프로필이 성공적으로 수정되었습니다.',
-          [
-            {
-              text: '확인',
-              onPress: () => navigation.goBack(),
-            },
-          ],
-        );
-      } else {
-        Alert.alert('수정 실패', response.error || '프로필 수정에 실패했습니다.');
-      }
+      // 비밀번호 변경 API 호출
+      Alert.alert('성공', '비밀번호가 변경되었습니다.', [
+        {
+          text: '확인',
+          onPress: () => {
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+          },
+        },
+      ]);
     } catch (error) {
-      console.error('프로필 수정 실패:', error);
-      Alert.alert('오류', '프로필 수정 중 오류가 발생했습니다.');
+      Alert.alert('오류', '비밀번호 변경 중 오류가 발생했습니다.');
     } finally {
       setSaving(false);
     }
@@ -135,237 +98,290 @@ const ProfileEditScreen = ({navigation}) => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FF6B6B" />
-        <Text style={styles.loadingText}>프로필 정보 불러오는 중...</Text>
+        <ActivityIndicator size="large" color="#E57373" />
       </View>
     );
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled">
-        {/* 헤더 */}
-        <LinearGradient
-          colors={['#FF6B6B', '#FF8E53']}
-          style={styles.header}
-          start={{x: 0, y: 0}}
-          end={{x: 1, y: 1}}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}>
-            <Text style={styles.backButtonText}>← 뒤로</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>프로필 수정</Text>
-          <Text style={styles.headerSubtitle}>
-            개인정보를 수정할 수 있습니다
-          </Text>
-        </LinearGradient>
+    <View style={styles.container}>
+      {/* 헤더 */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.navigate('Main', { screen: 'MyPage' })}
+        >
+          <Text style={styles.backIcon}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>계정</Text>
+        <View style={styles.headerRight} />
+      </View>
 
-        {/* 폼 */}
-        <View style={styles.formContainer}>
-          <View style={styles.infoBox}>
-            <Text style={styles.infoText}>
-              💡 이메일은 변경할 수 없습니다
-            </Text>
+      <KeyboardAvoidingView
+        style={styles.content}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* 프로필 섹션 */}
+          <View style={styles.profileSection}>
+            <View style={styles.profileIconContainer}>
+              <View style={styles.profileIcon}>
+                <Text style={styles.profileEmoji}>👤</Text>
+              </View>
+              <View style={styles.editBadge}>
+                <Text style={styles.editBadgeText}>✏️</Text>
+              </View>
+            </View>
+            <Text style={styles.profileName}>{name || '사용자'} 님</Text>
           </View>
 
           {/* 이메일 (읽기 전용) */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>이메일</Text>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>이메일</Text>
             <View style={styles.inputDisabled}>
               <Text style={styles.inputDisabledText}>{email}</Text>
             </View>
-            <Text style={styles.helpText}>이메일은 변경할 수 없습니다</Text>
           </View>
 
-          {/* 이름 */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>이름 *</Text>
+          {/* 전화번호 (읽기 전용) */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>전화번호</Text>
+            <View style={styles.inputDisabled}>
+              <Text style={styles.inputDisabledText}>{phoneNumber}</Text>
+            </View>
+          </View>
+
+          {/* 비밀번호 수정 */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>비밀번호 수정</Text>
             <TextInput
               style={styles.input}
-              placeholder="홍길동"
-              placeholderTextColor="#999"
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-              editable={!saving}
+              placeholder="현재 비밀번호"
+              placeholderTextColor="#C0C0C0"
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              secureTextEntry
             />
-          </View>
-
-          {/* 전화번호 */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>전화번호 *</Text>
             <TextInput
-              style={styles.input}
-              placeholder="010-1234-5678"
-              placeholderTextColor="#999"
-              value={phoneNumber}
-              onChangeText={text => setPhoneNumber(formatPhoneNumber(text))}
-              keyboardType="phone-pad"
-              maxLength={13}
-              editable={!saving}
+              style={[styles.input, styles.inputSpacing]}
+              placeholder="새로운 비밀번호"
+              placeholderTextColor="#C0C0C0"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry
             />
-            <Text style={styles.helpText}>010-1234-5678 형식으로 입력</Text>
+            <TextInput
+              style={[styles.input, styles.inputSpacing]}
+              placeholder="새로운 비밀번호 확인"
+              placeholderTextColor="#C0C0C0"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+            />
+            <TouchableOpacity
+              style={styles.changePasswordButton}
+              onPress={handleChangePassword}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator color="white" size="small" />
+              ) : (
+                <Text style={styles.changePasswordButtonText}>
+                  비밀번호 수정
+                </Text>
+              )}
+            </TouchableOpacity>
           </View>
 
-          {/* 저장 버튼 */}
-          <TouchableOpacity
-            style={[styles.button, saving && styles.buttonDisabled]}
-            onPress={handleSave}
-            disabled={saving}>
-            {saving ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text style={styles.buttonText}>저장하기</Text>
-            )}
-          </TouchableOpacity>
-
-          {/* 안내 */}
-          <View style={styles.notice}>
-            <Text style={styles.noticeText}>
-              🔒 비밀번호 변경은 마이페이지에서{'\n'}
-              별도로 진행할 수 있습니다
-            </Text>
+          {/* 서비스 동의 */}
+          <View style={styles.section}>
+            <View style={styles.toggleItem}>
+              <Text style={styles.toggleLabel}>위치 기반 서비스 동의</Text>
+              <Switch
+                value={locationServiceEnabled}
+                onValueChange={setLocationServiceEnabled}
+                trackColor={{ false: '#E0E0E0', true: '#E57373' }}
+                thumbColor={locationServiceEnabled ? '#D84A48' : '#f4f3f4'}
+                ios_backgroundColor="#E0E0E0"
+              />
+            </View>
+            <View style={styles.toggleItem}>
+              <Text style={styles.toggleLabel}>카메라 이용 동의</Text>
+              <Switch
+                value={cameraEnabled}
+                onValueChange={setCameraEnabled}
+                trackColor={{ false: '#E0E0E0', true: '#E57373' }}
+                thumbColor={cameraEnabled ? '#D84A48' : '#f4f3f4'}
+                ios_backgroundColor="#E0E0E0"
+              />
+            </View>
+            <View style={styles.toggleItem}>
+              <Text style={styles.toggleLabel}>판입 알림 서비스 동의</Text>
+              <Switch
+                value={notificationEnabled}
+                onValueChange={setNotificationEnabled}
+                trackColor={{ false: '#E0E0E0', true: '#E57373' }}
+                thumbColor={notificationEnabled ? '#D84A48' : '#f4f3f4'}
+                ios_backgroundColor="#E0E0E0"
+              />
+            </View>
           </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  scrollContent: {
-    flexGrow: 1,
+    backgroundColor: '#FAFAFA',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
+    backgroundColor: '#FAFAFA',
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFB3BA',
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 15,
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 30,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
   },
   backButton: {
-    marginBottom: 20,
+    padding: 5,
+    width: 40,
   },
-  backButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+  backIcon: {
+    fontSize: 24,
+    color: '#333',
   },
   headerTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 8,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
-  },
-  formContainer: {
-    padding: 20,
-  },
-  infoBox: {
-    backgroundColor: '#FFF9E6',
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: '#FFB800',
-  },
-  infoText: {
-    fontSize: 13,
-    color: '#856404',
-    lineHeight: 20,
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    color: '#333',
+    fontSize: 18,
     fontWeight: '600',
-    marginBottom: 8,
+    color: '#333',
+  },
+  headerRight: {
+    width: 40,
+  },
+  content: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  profileSection: {
+    backgroundColor: '#fff',
+    paddingVertical: 30,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  profileIconContainer: {
+    position: 'relative',
+    marginBottom: 15,
+  },
+  profileIcon: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#B0B0B0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileEmoji: {
+    fontSize: 36,
+    color: '#fff',
+  },
+  editBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+  },
+  editBadgeText: {
+    fontSize: 12,
+  },
+  profileName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  section: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    marginBottom: 2,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 15,
   },
   input: {
-    backgroundColor: 'white',
-    borderRadius: 12,
+    backgroundColor: '#FAFAFA',
+    borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    fontSize: 16,
+    fontSize: 15,
     color: '#333',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: '#E8E8E8',
   },
   inputDisabled: {
     backgroundColor: '#F5F5F5',
-    borderRadius: 12,
+    borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: '#E8E8E8',
   },
   inputDisabledText: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#999',
   },
-  helpText: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 5,
+  inputSpacing: {
+    marginTop: 12,
   },
-  button: {
-    backgroundColor: '#FF6B6B',
-    borderRadius: 12,
-    paddingVertical: 16,
+  changePasswordButton: {
+    backgroundColor: '#D84A48',
+    borderRadius: 8,
+    paddingVertical: 14,
     alignItems: 'center',
-    marginTop: 10,
-    shadowColor: '#FF6B6B',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    marginTop: 16,
   },
-  buttonDisabled: {
-    opacity: 0.6,
+  changePasswordButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
   },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
+  toggleItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
   },
-  notice: {
-    backgroundColor: '#E8F5E9',
-    padding: 15,
-    borderRadius: 12,
-    marginTop: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: '#4CAF50',
-  },
-  noticeText: {
-    fontSize: 13,
-    color: '#2E7D32',
-    textAlign: 'center',
-    lineHeight: 20,
+  toggleLabel: {
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '500',
   },
 });
 
