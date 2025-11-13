@@ -9,15 +9,17 @@ import {
   Alert,
   Image,
   Modal,
+  TextInput,
 } from 'react-native';
 import {loadDetectionHistory, deleteDetection} from '../services/StorageService';
 import LinearGradient from 'react-native-linear-gradient';
 
-const HistoryScreen = () => {
+const HistoryScreen = ({navigation}) => {
   const [history, setHistory] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedImage, setSelectedImage] = useState(null);
+  const [searchText, setSearchText] = useState('');
 
   useEffect(() => {
     loadHistory();
@@ -71,10 +73,19 @@ const HistoryScreen = () => {
     return emojis[category] || '❓';
   };
 
-  const filteredHistory =
-    selectedCategory === 'all'
-      ? history
-      : history.filter(item => item.category === selectedCategory);
+  const filteredHistory = history.filter(item => {
+    const matchesCategory =
+      selectedCategory === 'all' || item.category === selectedCategory;
+    const matchesSearch =
+      searchText === '' ||
+      getCategoryLabel(item.category)
+        .toLowerCase()
+        .includes(searchText.toLowerCase()) ||
+      new Date(item.timestamp)
+        .toLocaleString('ko-KR')
+        .includes(searchText);
+    return matchesCategory && matchesSearch;
+  });
 
   const getStatistics = () => {
     const total = history.length;
@@ -87,153 +98,84 @@ const HistoryScreen = () => {
 
   const stats = getStatistics();
 
+  const getRelativeTime = timestamp => {
+    const now = new Date();
+    const time = new Date(timestamp);
+    const diffMs = now - time;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${diffDays}d ago`;
+  };
+
   const renderHistoryItem = ({item}) => (
-    <View style={styles.historyItem}>
-      <LinearGradient
-        colors={getCategoryColors(item.category)}
-        style={styles.categoryStrip}
-        start={{x: 0, y: 0}}
-        end={{x: 0, y: 1}}
-      />
+    <TouchableOpacity
+      style={styles.historyItem}
+      onLongPress={() => handleDelete(item.id)}>
+      {/* 썸네일 이미지 */}
+      <View style={styles.thumbnailContainer}>
+        {item.annotatedImage ? (
+          <TouchableOpacity onPress={() => setSelectedImage(item.annotatedImage)}>
+            <Image
+              source={{uri: `data:image/jpeg;base64,${item.annotatedImage}`}}
+              style={styles.thumbnail}
+              resizeMode="cover"
+            />
+          </TouchableOpacity>
+        ) : (
+          <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
+            <Text style={styles.thumbnailEmoji}>
+              {getCategoryEmoji(item.category)}
+            </Text>
+          </View>
+        )}
+      </View>
 
-      {/* 스크린샷 썸네일 */}
-      {item.annotatedImage && (
-        <TouchableOpacity
-          style={styles.thumbnailContainer}
-          onPress={() => setSelectedImage(item.annotatedImage)}>
-          <Image
-            source={{uri: `data:image/jpeg;base64,${item.annotatedImage}`}}
-            style={styles.thumbnail}
-            resizeMode="cover"
-          />
-        </TouchableOpacity>
-      )}
-
-      <TouchableOpacity
-        style={styles.itemContent}
-        onLongPress={() => handleDelete(item.id)}>
-        <View style={styles.itemHeader}>
-          <Text style={styles.categoryEmoji}>
-            {getCategoryEmoji(item.category)}
+      {/* 내용 영역 */}
+      <View style={styles.itemContent}>
+        <View style={styles.itemTextContainer}>
+          <Text style={styles.itemTitle}>
+            {getCategoryLabel(item.category)} 화재 신고
           </Text>
-          <View style={styles.itemInfo}>
-            <Text style={styles.categoryText}>
-              {getCategoryLabel(item.category)}
-            </Text>
-            <Text style={styles.timestampText}>
-              {new Date(item.timestamp).toLocaleString('ko-KR')}
-            </Text>
-          </View>
-          <View style={styles.confidenceBadge}>
-            <Text style={styles.confidenceText}>
-              {(item.confidence * 100).toFixed(0)}%
-            </Text>
-          </View>
+          <Text style={styles.itemSubtitle}>
+            위치: {item.location || '***'} | 상태: {item.status || '***'}
+          </Text>
+          <Text style={styles.itemDescription} numberOfLines={2}>
+            {item.description ||
+              `화재 감지 신뢰도 ${(item.confidence * 100).toFixed(0)}%. ${
+                item.detections?.length || 0
+              }개 객체 탐지됨.`}
+          </Text>
         </View>
-
-        {item.detections && item.detections.length > 0 && (
-          <View style={styles.detectionsContainer}>
-            {item.detections.map((detection, index) => (
-              <View key={index} style={styles.detectionTag}>
-                <Text style={styles.detectionTagText}>
-                  {detection.class === 'fire' ? '🔥' : '💨'}{' '}
-                  {(detection.confidence * 100).toFixed(0)}%
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {item.sceneInfo && (
-          <View style={styles.sceneInfo}>
-            <Text style={styles.sceneInfoText}>
-              식생: {(item.sceneInfo.vegetationRatio * 100).toFixed(0)}% | 도심:{' '}
-              {(item.sceneInfo.urbanRatio * 100).toFixed(0)}%
-            </Text>
-          </View>
-        )}
-      </TouchableOpacity>
-    </View>
+        <Text style={styles.timeText}>{getRelativeTime(item.timestamp)}</Text>
+      </View>
+    </TouchableOpacity>
   );
 
   return (
     <View style={styles.container}>
-      <View style={styles.statsContainer}>
-        <View style={styles.statBox}>
-          <Text style={styles.statNumber}>{stats.total}</Text>
-          <Text style={styles.statLabel}>전체 감지</Text>
-        </View>
-        <View style={[styles.statBox, styles.wildfireBox]}>
-          <Text style={styles.statNumber}>{stats.wildfire}</Text>
-          <Text style={styles.statLabel}>산불</Text>
-        </View>
-        <View style={[styles.statBox, styles.urbanBox]}>
-          <Text style={styles.statNumber}>{stats.urbanFire}</Text>
-          <Text style={styles.statLabel}>도심 화재</Text>
-        </View>
-        <View style={[styles.statBox, styles.uncertainBox]}>
-          <Text style={styles.statNumber}>{stats.uncertain}</Text>
-          <Text style={styles.statLabel}>의심</Text>
-        </View>
+      {/* 헤더 */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation?.goBack()}>
+          <Text style={styles.backButtonText}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>신고내역</Text>
       </View>
 
-      <View style={styles.filterContainer}>
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            selectedCategory === 'all' && styles.filterButtonActive,
-          ]}
-          onPress={() => setSelectedCategory('all')}>
-          <Text
-            style={[
-              styles.filterButtonText,
-              selectedCategory === 'all' && styles.filterButtonTextActive,
-            ]}>
-            전체
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            selectedCategory === 'wildfire' && styles.filterButtonActive,
-          ]}
-          onPress={() => setSelectedCategory('wildfire')}>
-          <Text
-            style={[
-              styles.filterButtonText,
-              selectedCategory === 'wildfire' && styles.filterButtonTextActive,
-            ]}>
-            산불
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            selectedCategory === 'urban_fire' && styles.filterButtonActive,
-          ]}
-          onPress={() => setSelectedCategory('urban_fire')}>
-          <Text
-            style={[
-              styles.filterButtonText,
-              selectedCategory === 'urban_fire' && styles.filterButtonTextActive,
-            ]}>
-            도심 화재
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            selectedCategory === 'uncertain' && styles.filterButtonActive,
-          ]}
-          onPress={() => setSelectedCategory('uncertain')}>
-          <Text
-            style={[
-              styles.filterButtonText,
-              selectedCategory === 'uncertain' && styles.filterButtonTextActive,
-            ]}>
-            의심
-          </Text>
-        </TouchableOpacity>
+      {/* 검색 입력 필드 */}
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="지역별을 검색하세요"
+          placeholderTextColor="#999"
+          value={searchText}
+          onChangeText={setSearchText}
+        />
       </View>
 
       {filteredHistory.length === 0 ? (
@@ -282,65 +224,38 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  statsContainer: {
+  header: {
+    backgroundColor: '#FFB6C1',
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    paddingVertical: 20,
-    paddingHorizontal: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  statBox: {
-    flex: 1,
     alignItems: 'center',
   },
-  wildfireBox: {
-    borderLeftWidth: 2,
-    borderLeftColor: '#FF4500',
+  backButton: {
+    marginRight: 15,
   },
-  urbanBox: {
-    borderLeftWidth: 2,
-    borderLeftColor: '#FF8C00',
+  backButtonText: {
+    fontSize: 28,
+    color: '#333',
   },
-  uncertainBox: {
-    borderLeftWidth: 2,
-    borderLeftColor: '#FFD700',
-  },
-  statNumber: {
-    fontSize: 24,
+  headerTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
   },
-  statLabel: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 5,
-  },
-  filterContainer: {
-    flexDirection: 'row',
+  searchContainer: {
     backgroundColor: '#fff',
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    gap: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
   },
-  filterButton: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+  searchInput: {
+    backgroundColor: '#f5f5f5',
     borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-    alignItems: 'center',
-  },
-  filterButtonActive: {
-    backgroundColor: '#FF4500',
-  },
-  filterButtonText: {
-    fontSize: 13,
-    color: '#666',
-    fontWeight: '600',
-  },
-  filterButtonTextActive: {
-    color: '#fff',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: '#333',
   },
   listContainer: {
     padding: 15,
@@ -349,79 +264,59 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#fff',
     borderRadius: 12,
-    marginBottom: 12,
-    overflow: 'hidden',
-    elevation: 2,
+    marginBottom: 15,
+    padding: 15,
+    elevation: 1,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 2,
+  },
+  thumbnailContainer: {
+    marginRight: 15,
+  },
+  thumbnail: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+  },
+  thumbnailPlaceholder: {
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  categoryStrip: {
-    width: 6,
-    alignSelf: 'stretch',
+  thumbnailEmoji: {
+    fontSize: 24,
   },
   itemContent: {
     flex: 1,
-    padding: 15,
-  },
-  itemHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  categoryEmoji: {
-    fontSize: 28,
-    marginRight: 12,
-  },
-  itemInfo: {
+  itemTextContainer: {
     flex: 1,
+    marginRight: 10,
   },
-  categoryText: {
+  itemTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
+    marginBottom: 4,
   },
-  timestampText: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 2,
-  },
-  confidenceBadge: {
-    backgroundColor: '#FF4500',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  confidenceText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  detectionsContainer: {
-    flexDirection: 'row',
-    marginTop: 10,
-    gap: 8,
-  },
-  detectionTag: {
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-  },
-  detectionTagText: {
-    fontSize: 12,
-    color: '#333',
-  },
-  sceneInfo: {
-    marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  sceneInfoText: {
+  itemSubtitle: {
     fontSize: 12,
     color: '#666',
+    marginBottom: 4,
+  },
+  itemDescription: {
+    fontSize: 13,
+    color: '#888',
+    lineHeight: 18,
+  },
+  timeText: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
   },
   emptyContainer: {
     flex: 1,
@@ -431,16 +326,6 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: '#888',
-  },
-  thumbnailContainer: {
-    width: 100,
-    height: 100,
-    marginLeft: 10,
-  },
-  thumbnail: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 8,
   },
   modalContainer: {
     flex: 1,

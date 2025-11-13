@@ -1,20 +1,17 @@
-import React, {useEffect} from 'react';
+import React, {useEffect, useRef} from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Animated,
-  Dimensions,
   Alert,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 
-const {width} = Dimensions.get('window');
-
 const FireAlert = ({detection, onClose}) => {
-  const slideAnim = new Animated.Value(-200);
-  const pulseAnim = new Animated.Value(1);
+  const slideAnim = useRef(new Animated.Value(-200)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     // 슬라이드 인 애니메이션
@@ -47,7 +44,7 @@ const FireAlert = ({detection, onClose}) => {
     }, 10000);
 
     return () => clearTimeout(timeout);
-  }, []);
+  }, [slideAnim, pulseAnim, onClose]);
 
   const handleEmergencyCall = () => {
     Alert.alert(
