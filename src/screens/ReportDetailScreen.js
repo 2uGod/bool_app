@@ -23,37 +23,37 @@ const ReportDetailScreen = ({route, navigation}) => {
   const [imageView, setImageView] = useState('original'); // 'original' or 'annotated'
 
   useEffect(() => {
-    fetchReportDetail();
-  }, []);
+    const fetchReportDetail = async () => {
+      try {
+        setLoading(true);
+        const token = await AsyncStorage.getItem('access_token');
 
-  const fetchReportDetail = async () => {
-    try {
-      setLoading(true);
-      const token = await AsyncStorage.getItem('access_token');
+        if (!token) {
+          Alert.alert('오류', '로그인이 필요합니다.', [
+            {text: '확인', onPress: () => navigation.navigate('Login')},
+          ]);
+          return;
+        }
 
-      if (!token) {
-        Alert.alert('오류', '로그인이 필요합니다.', [
-          {text: '확인', onPress: () => navigation.navigate('Login')},
+        const result = await UserAPI.getReportDetail(token, reportId);
+
+        if (result.success) {
+          setReport(result.report);
+        } else {
+          throw new Error(result.error || '신고 내역을 불러올 수 없습니다.');
+        }
+      } catch (error) {
+        console.error('신고 상세 조회 실패:', error);
+        Alert.alert('오류', error.message || '신고 내역을 불러올 수 없습니다.', [
+          {text: '확인', onPress: () => navigation.goBack()},
         ]);
-        return;
+      } finally {
+        setLoading(false);
       }
+    };
 
-      const result = await UserAPI.getReportDetail(token, reportId);
-
-      if (result.success) {
-        setReport(result.report);
-      } else {
-        throw new Error(result.error || '신고 내역을 불러올 수 없습니다.');
-      }
-    } catch (error) {
-      console.error('신고 상세 조회 실패:', error);
-      Alert.alert('오류', error.message || '신고 내역을 불러올 수 없습니다.', [
-        {text: '확인', onPress: () => navigation.goBack()},
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    fetchReportDetail();
+  }, [reportId, navigation]);
 
   const getStatusText = status => {
     const statusMap = {

@@ -21,6 +21,25 @@ import SettingsScreen from './src/screens/SettingsScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
+// Tab Bar Icon Components
+const ReportsIcon = ({ color }: { color: string }) => (
+  <View style={styles.iconContainer}>
+    <Text style={[styles.icon, { color }]}>📋</Text>
+  </View>
+);
+
+const DetectionIcon = ({ color }: { color: string }) => (
+  <View style={styles.iconContainer}>
+    <Text style={[styles.icon, { color }]}>🔥</Text>
+  </View>
+);
+
+const MyPageIcon = ({ color }: { color: string }) => (
+  <View style={styles.iconContainer}>
+    <Text style={[styles.icon, { color }]}>👤</Text>
+  </View>
+);
+
 // 메인 탭 네비게이터
 const MainTabs = () => {
   return (
@@ -49,12 +68,8 @@ const MainTabs = () => {
         component={ReportsScreen}
         options={{
           tabBarLabel: '신고 내역',
-          tabBarIcon: ({ color }) => (
-            <View style={styles.iconContainer}>
-              <Text style={[styles.icon, { color }]}>📋</Text>
-            </View>
-          ),
-          headerTitle: '신고 내역',
+          tabBarIcon: ReportsIcon,
+          headerShown: false,
         }}
       />
       <Tab.Screen
@@ -62,11 +77,7 @@ const MainTabs = () => {
         component={HomeScreen}
         options={{
           tabBarLabel: '화재 감지',
-          tabBarIcon: ({ color }) => (
-            <View style={styles.iconContainer}>
-              <Text style={[styles.icon, { color }]}>🔥</Text>
-            </View>
-          ),
+          tabBarIcon: DetectionIcon,
           headerShown: false,
         }}
       />
@@ -75,11 +86,7 @@ const MainTabs = () => {
         component={MyPageScreen}
         options={{
           tabBarLabel: '마이페이지',
-          tabBarIcon: ({ color }) => (
-            <View style={styles.iconContainer}>
-              <Text style={[styles.icon, { color }]}>👤</Text>
-            </View>
-          ),
+          tabBarIcon: MyPageIcon,
           headerShown: false,
         }}
       />

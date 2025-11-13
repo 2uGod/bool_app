@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  TextInput,
+  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import UserAPI from '../services/UserAPI';
@@ -15,9 +17,11 @@ const ReportsScreen = ({navigation}) => {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchText, setSearchText] = useState('');
 
   useEffect(() => {
     loadReports();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadReports = async () => {
@@ -75,61 +79,58 @@ const ReportsScreen = ({navigation}) => {
     );
   };
 
+  const getRelativeTime = timestamp => {
+    const now = new Date();
+    const time = new Date(timestamp);
+    const diffMs = now - time;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${diffDays}d ago`;
+  };
+
+  const filteredReports = reports.filter(item => {
+    if (searchText === '') return true;
+    const searchLower = searchText.toLowerCase();
+    return (
+      (item.address || '').toLowerCase().includes(searchLower) ||
+      getFireTypeText(item.fire_type).toLowerCase().includes(searchLower)
+    );
+  });
+
   const renderReportItem = ({item}) => (
     <TouchableOpacity
       style={styles.reportCard}
       onPress={() =>
         navigation.navigate('ReportDetail', {reportId: item.id})
       }>
-      <View style={styles.reportHeader}>
-        <Text style={styles.reportTitle}>{getFireTypeText(item.fire_type)}</Text>
-        {getStatusBadge(item.transmission_status)}
+      {/* 썸네일 */}
+      <View style={styles.thumbnailContainer}>
+        <View style={styles.thumbnailPlaceholder}>
+          <Text style={styles.thumbnailEmoji}>
+            {item.fire_type === 'wildfire' ? '🌲🔥' : item.fire_type === 'urban_fire' ? '🏙️🔥' : '🔥'}
+          </Text>
+        </View>
       </View>
 
-      <View style={styles.reportInfo}>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>📍 위치:</Text>
-          <Text style={styles.infoValue} numberOfLines={1}>
-            {item.address || '위치 정보 없음'}
+      {/* 내용 영역 */}
+      <View style={styles.itemContent}>
+        <View style={styles.itemTextContainer}>
+          <Text style={styles.itemTitle}>
+            {getFireTypeText(item.fire_type)} 화재 신고
+          </Text>
+          <Text style={styles.itemSubtitle}>
+            위치: {item.address || '***'} | 상태: {item.transmission_status === 'success' ? '전송됨' : item.transmission_status === 'failed' ? '실패' : '대기중'}
+          </Text>
+          <Text style={styles.itemDescription} numberOfLines={2}>
+            위험도 {item.confidence ? `${(typeof item.confidence === 'number' ? item.confidence : parseFloat(item.confidence) || 0).toFixed(1)}%` : '-'} | 습도: {item.humidity ? `${item.humidity}%` : '-'}
           </Text>
         </View>
-
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>💧 습도:</Text>
-          <Text style={styles.infoValue}>
-            {item.humidity ? `${item.humidity}%` : '-'}
-          </Text>
-        </View>
-
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>🎯 위험도:</Text>
-          <Text
-            style={[
-              styles.infoValue,
-              styles.confidenceValue,
-              (typeof item.confidence === 'number' ? item.confidence : parseFloat(item.confidence) || 0) >= 80 && styles.highConfidence,
-            ]}>
-            {item.confidence 
-              ? `${(typeof item.confidence === 'number' 
-                  ? item.confidence 
-                  : parseFloat(item.confidence) || 0).toFixed(1)}%` 
-              : '-'}
-          </Text>
-        </View>
-
-        {item.points_earned && (
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>⭐ 획득 점수:</Text>
-            <Text style={[styles.infoValue, styles.pointsValue]}>
-              +{item.points_earned}점
-            </Text>
-          </View>
-        )}
+        <Text style={styles.timeText}>{getRelativeTime(item.created_at)}</Text>
       </View>
-
-      <Text style={styles.reportDate}>
-        {new Date(item.created_at).toLocaleString('ko-KR')}
-      </Text>
     </TouchableOpacity>
   );
 
@@ -141,33 +142,93 @@ const ReportsScreen = ({navigation}) => {
     );
   }
 
-  if (reports.length === 0) {
-    return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyEmoji}>🔥</Text>
-        <Text style={styles.emptyText}>아직 신고 내역이 없습니다</Text>
-      </View>
-    );
-  }
-
   return (
-    <FlatList
-      data={reports}
-      renderItem={renderReportItem}
-      keyExtractor={item => item.id.toString()}
-      contentContainerStyle={styles.listContainer}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor="#FF4500"
+    <View style={styles.container}>
+      {/* 헤더 */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation?.goBack()}>
+          <Text style={styles.backButtonText}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>신고내역</Text>
+      </View>
+
+      {/* 검색 입력 필드 */}
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="지역별을 검색하세요"
+          placeholderTextColor="#999"
+          value={searchText}
+          onChangeText={setSearchText}
         />
-      }
-    />
+      </View>
+
+      {filteredReports.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyEmoji}>🔥</Text>
+          <Text style={styles.emptyText}>
+            {reports.length === 0 ? '아직 신고 내역이 없습니다' : '검색 결과가 없습니다'}
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredReports}
+          renderItem={renderReportItem}
+          keyExtractor={item => item.id.toString()}
+          contentContainerStyle={styles.listContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#FF4500"
+            />
+          }
+        />
+      )}
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  header: {
+    backgroundColor: '#FFB6C1',
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButton: {
+    marginRight: 15,
+  },
+  backButtonText: {
+    fontSize: 28,
+    color: '#333',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  searchContainer: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+  },
+  searchInput: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: '#333',
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -190,76 +251,62 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     padding: 15,
-    backgroundColor: '#f5f5f5',
   },
   reportCard: {
+    flexDirection: 'row',
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 20,
     marginBottom: 15,
+    padding: 15,
+    elevation: 1,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
-  reportHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  thumbnailContainer: {
+    marginRight: 15,
+  },
+  thumbnailPlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 15,
   },
-  reportTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+  thumbnailEmoji: {
+    fontSize: 24,
   },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  statusText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  reportInfo: {
-    marginBottom: 10,
-  },
-  infoRow: {
+  itemContent: {
+    flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
   },
-  infoLabel: {
-    fontSize: 14,
-    color: '#666',
+  itemTextContainer: {
     flex: 1,
+    marginRight: 10,
   },
-  infoValue: {
-    fontSize: 14,
+  itemTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
     color: '#333',
-    fontWeight: '500',
-    flex: 2,
-    textAlign: 'right',
+    marginBottom: 4,
   },
-  confidenceValue: {
-    color: '#FF9800',
-    fontWeight: 'bold',
+  itemSubtitle: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
   },
-  highConfidence: {
-    color: '#F44336',
+  itemDescription: {
+    fontSize: 13,
+    color: '#888',
+    lineHeight: 18,
   },
-  pointsValue: {
-    color: '#4CAF50',
-    fontWeight: 'bold',
-  },
-  reportDate: {
+  timeText: {
     fontSize: 12,
     color: '#999',
-    textAlign: 'right',
-    marginTop: 10,
+    marginTop: 2,
   },
 });
 
