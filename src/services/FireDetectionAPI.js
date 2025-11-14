@@ -60,14 +60,22 @@ class FireDetectionAPI {
       formData.append('address', addr);
 
       // 날씨 정보 가져오기 (위치 기반)
-      console.log('🌤️ 날씨 정보 조회 중...');
+      console.log('=============== 날씨 정보 조회 시작 ===============');
       const weather = await WeatherAPI.getWeather(lat, lng);
-      console.log('✅ 날씨 정보:', weather);
+      console.log('=============== 날씨 정보 조회 완료 ===============');
+      console.log('WEATHER_DATA:', JSON.stringify(weather));
 
-      // 날씨 정보 추가
+      // 날씨 정보 추가 (Swagger 규격에 맞춰 camelCase로 전송)
       formData.append('humidity', weather.humidity.toString());
       formData.append('windDirection', weather.windDirection);
       formData.append('windSpeed', weather.windSpeed.toString());
+
+      console.log('=============== FormData 날씨 추가 완료 ===============');
+      console.log('FORMDATA_WEATHER:', JSON.stringify({
+        humidity: weather.humidity.toString(),
+        windDirection: weather.windDirection,
+        windSpeed: weather.windSpeed.toString()
+      }));
 
       // API 호출 (NestJS를 통한 화재 감지)
       const url = `${API_BASE_URL}/api/reports/detect`;
