@@ -4,6 +4,7 @@
  */
 
 import {API_BASE_URL} from '../config/api';
+import WeatherAPI from './WeatherAPI';
 
 class UserAPI {
   /**
@@ -25,6 +26,27 @@ class UserAPI {
         formData.append('latitude', locationData.latitude);
         formData.append('longitude', locationData.longitude);
         formData.append('address', locationData.address || '');
+
+        // 날씨 정보 조회 및 추가
+        console.log('=============== 날씨 정보 조회 시작 ===============');
+        const weather = await WeatherAPI.getWeather(
+          parseFloat(locationData.latitude),
+          parseFloat(locationData.longitude)
+        );
+        console.log('=============== 날씨 정보 조회 완료 ===============');
+        console.log('WEATHER_DATA:', JSON.stringify(weather));
+
+        // Swagger 규격에 맞춰 camelCase로 전송
+        formData.append('humidity', weather.humidity.toString());
+        formData.append('windDirection', weather.windDirection);
+        formData.append('windSpeed', weather.windSpeed.toString());
+
+        console.log('=============== FormData 날씨 추가 완료 ===============');
+        console.log('FORMDATA_WEATHER:', JSON.stringify({
+          humidity: weather.humidity.toString(),
+          windDirection: weather.windDirection,
+          windSpeed: weather.windSpeed.toString()
+        }));
       }
 
       const response = await fetch(`${API_BASE_URL}/api/reports/detect`, {

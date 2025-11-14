@@ -148,7 +148,7 @@ const ReportsScreen = ({navigation}) => {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation?.goBack()}>
+          onPress={() => navigation.navigate('Detection')}>
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>신고내역</Text>

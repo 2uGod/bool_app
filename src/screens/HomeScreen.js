@@ -7,13 +7,17 @@ import {
   Image,
   Platform,
   PermissionsAndroid,
+  ActivityIndicator,
 } from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import WeatherAPI from '../services/WeatherAPI';
 
 const HomeScreen = ({ navigation }) => {
   const [currentLocation, setCurrentLocation] = useState(null);
   const [weather, setWeather] = useState(null);
+  const [weatherInfo, setWeatherInfo] = useState(null);
+  const [loadingWeather, setLoadingWeather] = useState(false);
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
   const [userName, setUserName] = useState('사용자');
 
@@ -115,6 +119,39 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
+  const getFireRiskLevel = (humidity, windSpeed) => {
+    // 산불 위험도 계산 (습도가 낮고 풍속이 높을수록 위험)
+    if (humidity < 30 && windSpeed > 4) {
+      return { level: '매우 높음', color: '#D32F2F', emoji: '🔥🔥🔥' };
+    } else if (humidity < 40 || windSpeed > 3) {
+      return { level: '높음', color: '#FF6B6B', emoji: '🔥🔥' };
+    } else if (humidity < 60) {
+      return { level: '보통', color: '#FFA726', emoji: '🔥' };
+    } else {
+      return { level: '낮음', color: '#66BB6A', emoji: '✅' };
+    }
+  };
+
+  const getWeatherFromKMA = async (latitude, longitude) => {
+    try {
+      setLoadingWeather(true);
+      console.log('🌤️ Fetching weather from KMA...');
+      const data = await WeatherAPI.getWeather(latitude, longitude);
+      console.log('✅ KMA Weather data:', data);
+
+      const fireRisk = getFireRiskLevel(data.humidity, data.windSpeed);
+
+      setWeatherInfo({
+        ...data,
+        fireRisk,
+      });
+      setLoadingWeather(false);
+    } catch (error) {
+      console.error('❌ Failed to fetch KMA weather:', error);
+      setLoadingWeather(false);
+    }
+  };
+
   const getCurrentLocation = async () => {
     console.log('📍 Getting current location...');
     Geolocation.getCurrentPosition(
@@ -133,6 +170,7 @@ const HomeScreen = ({ navigation }) => {
 
         setCurrentLocation(locationData);
         await getWeatherData(latitude, longitude);
+        await getWeatherFromKMA(latitude, longitude);
       },
       error => {
         console.error('❌ Get location error:', error.code, error.message);
@@ -236,6 +274,68 @@ const HomeScreen = ({ navigation }) => {
             : '위치 정보를 가져오는 중...'}
         </Text>
       </View>
+
+      {/* 기상청 날씨 정보 카드 */}
+      {loadingWeather ? (
+        <View style={styles.weatherInfoCard}>
+          <ActivityIndicator size="small" color="#FF6B6B" />
+          <Text style={styles.loadingText}>날씨 정보를 불러오는 중...</Text>
+        </View>
+      ) : weatherInfo ? (
+        <View style={styles.weatherInfoCard}>
+          {/* 산불 위험도 */}
+          <View style={styles.fireRiskSection}>
+            <View style={styles.fireRiskHeader}>
+              <Text style={styles.fireRiskEmoji}>{weatherInfo.fireRisk.emoji}</Text>
+              <View style={styles.fireRiskTextContainer}>
+                <Text style={styles.fireRiskLabel}>산불 위험도</Text>
+                <Text style={[styles.fireRiskLevel, {color: weatherInfo.fireRisk.color}]}>
+                  {weatherInfo.fireRisk.level}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* 날씨 상세 정보 */}
+          <View style={styles.weatherDetailsContainer}>
+            <View style={styles.weatherDetailItem}>
+              <View style={styles.weatherDetailIconContainer}>
+                <Text style={styles.weatherDetailIcon}>💧</Text>
+              </View>
+              <View style={styles.weatherDetailInfo}>
+                <Text style={styles.weatherDetailLabel}>습도</Text>
+                <Text style={styles.weatherDetailValue}>{`${weatherInfo.humidity}%`}</Text>
+              </View>
+            </View>
+
+            <View style={styles.weatherDetailDivider} />
+
+            <View style={styles.weatherDetailItem}>
+              <View style={styles.weatherDetailIconContainer}>
+                <Text style={styles.weatherDetailIcon}>🧭</Text>
+              </View>
+              <View style={styles.weatherDetailInfo}>
+                <Text style={styles.weatherDetailLabel}>풍향</Text>
+                <Text style={styles.weatherDetailValue}>{`${weatherInfo.windDirection}`}</Text>
+              </View>
+            </View>
+
+            <View style={styles.weatherDetailDivider} />
+
+            <View style={styles.weatherDetailItem}>
+              <View style={styles.weatherDetailIconContainer}>
+                <Text style={styles.weatherDetailIcon}>💨</Text>
+              </View>
+              <View style={styles.weatherDetailInfo}>
+                <Text style={styles.weatherDetailLabel}>풍속</Text>
+                <Text style={styles.weatherDetailValue}>{`${weatherInfo.windSpeed} m/s`}</Text>
+              </View>
+            </View>
+          </View>
+
+          <Text style={styles.weatherSource}>기상청 실시간 데이터</Text>
+        </View>
+      ) : null}
 
       {/* 실물신고 버튼 */}
       <View style={styles.fireButtonContainer}>
@@ -396,6 +496,102 @@ const styles = StyleSheet.create({
   fireEmoji2: {
     fontSize: 42,
     marginHorizontal: 6,
+  },
+  weatherInfoCard: {
+    backgroundColor: '#fff',
+    marginHorizontal: 24,
+    marginTop: 12,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  fireRiskSection: {
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  fireRiskHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  fireRiskEmoji: {
+    fontSize: 48,
+    marginRight: 16,
+  },
+  fireRiskTextContainer: {
+    flex: 1,
+  },
+  fireRiskLabel: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  fireRiskLevel: {
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  weatherDetailsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  weatherDetailItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  weatherDetailIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  weatherDetailIcon: {
+    fontSize: 24,
+  },
+  weatherDetailInfo: {
+    alignItems: 'center',
+  },
+  weatherDetailLabel: {
+    fontSize: 12,
+    color: '#999',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  weatherDetailValue: {
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '700',
+  },
+  weatherDetailDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#E0E0E0',
+    marginHorizontal: 8,
+  },
+  weatherSource: {
+    fontSize: 11,
+    color: '#999',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });
 

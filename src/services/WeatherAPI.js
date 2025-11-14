@@ -1,12 +1,18 @@
 /**
  * 기상청 API 서비스
  * 위치 기반 실시간 날씨 정보 조회
+ *
+ * API 문서: 기상청41_단기예보 조회서비스_오픈API활용가이드
+ * - 초단기실황조회(getUltraSrtNcst): 실황 정보 조회
+ * - 발표시각: 매시간 정시(00분)에 생성, 10분 이후 호출 가능
+ * - 제공 항목: T1H(기온), RN1(1시간 강수량), REH(습도),
+ *            VEC(풍향), WSD(풍속) 등
  */
 
 const WEATHER_API_KEY =
   '4b268ed7fd6465178564984b72bb2dea2f8658d79bede6993bed1aadba63b6e7';
 const WEATHER_API_URL =
-  'https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0';
+  'http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtNcst';
 
 class WeatherAPI {
   /**
@@ -57,20 +63,32 @@ class WeatherAPI {
 
   /**
    * 현재 시각 기준 기준 날짜/시간 계산
+   *
+   * 초단기실황: 매시간 정시(00분)에 생성, 10분 이후 호출 가능
+   * 예) 14:10 이후 → base_time=1400 데이터 조회 가능
    */
   static getBaseDateTime() {
     const now = new Date();
 
-    // 1시간 전 데이터 조회 (API 업데이트 지연 고려)
-    now.setHours(now.getHours() - 1);
+    const minute = now.getMinutes();
+    let hour = now.getHours();
+
+    // 현재 시각이 10분 이전이면 이전 시간대 데이터 사용
+    // 예: 14:05 → 13:00 데이터, 14:15 → 14:00 데이터
+    if (minute < 10) {
+      hour = hour - 1;
+      if (hour < 0) {
+        // 자정 이전으로 넘어가는 경우
+        now.setDate(now.getDate() - 1);
+        hour = 23;
+      }
+    }
 
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
-    const hour = String(now.getHours()).padStart(2, '0');
-
     const baseDate = `${year}${month}${day}`;
-    const baseTime = `${hour}00`;
+    const baseTime = `${String(hour).padStart(2, '0')}00`;
 
     return { baseDate, baseTime };
   }
@@ -99,12 +117,40 @@ class WeatherAPI {
         `[Weather] 날씨 조회: 좌표(${latitude}, ${longitude}) -> 격자(${nx}, ${ny}), 기준시각: ${baseDate} ${baseTime}`,
       );
 
-      const url = `${WEATHER_API_URL}/getUltraSrtNcst?serviceKey=${WEATHER_API_KEY}&numOfRows=10&pageNo=1&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${nx}&ny=${ny}`;
+      const url = `${WEATHER_API_URL}?serviceKey=${WEATHER_API_KEY}&numOfRows=10&pageNo=1&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${nx}&ny=${ny}`;
 
       const response = await fetch(url);
-      const data = await response.json();
+
+      // 응답 상태 확인
+      if (!response.ok) {
+        console.error(
+          '[Weather] API 응답 오류:',
+          response.status,
+          response.statusText,
+        );
+        return this.getDefaultWeather();
+      }
+
+      // 응답 텍스트 확인
+      const responseText = await response.text();
+
+      // JSON 파싱 시도
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('[Weather] JSON 파싱 실패:', parseError);
+        console.error('[Weather] 응답 내용:', responseText.substring(0, 200));
+        return this.getDefaultWeather();
+      }
 
       console.log('[Weather] API 응답:', data);
+
+      // API 에러 응답 체크
+      if (data?.response?.header?.resultCode !== '00') {
+        console.warn('[Weather] API 에러:', data?.response?.header?.resultMsg);
+        return this.getDefaultWeather();
+      }
 
       if (
         !data?.response?.body?.items?.item ||
