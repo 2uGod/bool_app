@@ -283,19 +283,6 @@ const HomeScreen = ({ navigation }) => {
         </View>
       ) : weatherInfo ? (
         <View style={styles.weatherInfoCard}>
-          {/* 산불 위험도 */}
-          <View style={styles.fireRiskSection}>
-            <View style={styles.fireRiskHeader}>
-              <Text style={styles.fireRiskEmoji}>{weatherInfo.fireRisk.emoji}</Text>
-              <View style={styles.fireRiskTextContainer}>
-                <Text style={styles.fireRiskLabel}>산불 위험도</Text>
-                <Text style={[styles.fireRiskLevel, {color: weatherInfo.fireRisk.color}]}>
-                  {weatherInfo.fireRisk.level}
-                </Text>
-              </View>
-            </View>
-          </View>
-
           {/* 날씨 상세 정보 */}
           <View style={styles.weatherDetailsContainer}>
             <View style={styles.weatherDetailItem}>
@@ -304,7 +291,9 @@ const HomeScreen = ({ navigation }) => {
               </View>
               <View style={styles.weatherDetailInfo}>
                 <Text style={styles.weatherDetailLabel}>습도</Text>
-                <Text style={styles.weatherDetailValue}>{`${weatherInfo.humidity}%`}</Text>
+                <Text
+                  style={styles.weatherDetailValue}
+                >{`${weatherInfo.humidity}%`}</Text>
               </View>
             </View>
 
@@ -316,7 +305,9 @@ const HomeScreen = ({ navigation }) => {
               </View>
               <View style={styles.weatherDetailInfo}>
                 <Text style={styles.weatherDetailLabel}>풍향</Text>
-                <Text style={styles.weatherDetailValue}>{`${weatherInfo.windDirection}`}</Text>
+                <Text
+                  style={styles.weatherDetailValue}
+                >{`${weatherInfo.windDirection}`}</Text>
               </View>
             </View>
 
@@ -328,7 +319,9 @@ const HomeScreen = ({ navigation }) => {
               </View>
               <View style={styles.weatherDetailInfo}>
                 <Text style={styles.weatherDetailLabel}>풍속</Text>
-                <Text style={styles.weatherDetailValue}>{`${weatherInfo.windSpeed} m/s`}</Text>
+                <Text
+                  style={styles.weatherDetailValue}
+                >{`${weatherInfo.windSpeed} m/s`}</Text>
               </View>
             </View>
           </View>
@@ -350,7 +343,6 @@ const HomeScreen = ({ navigation }) => {
           </View>
         </TouchableOpacity>
       </View>
-
     </View>
   );
 };
@@ -449,10 +441,10 @@ const styles = StyleSheet.create({
   },
   fireButtonContainer: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     paddingVertical: 40,
-    paddingBottom: 80,
+    paddingBottom: 60,
   },
   fireButton: {
     width: '70%',
@@ -501,6 +493,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     marginHorizontal: 24,
     marginTop: 12,
+    marginBottom: 16,
     borderRadius: 16,
     padding: 20,
     shadowColor: '#000',
