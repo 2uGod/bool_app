@@ -159,8 +159,8 @@ const MyPageScreen = ({ navigation }) => {
           />
           <MenuItem
             icon="🚪"
-            title="회원탈퇴"
-            subtitle="회원 탈퇴 시 관련된 모든 정보가 삭제됩니다"
+            title="로그아웃"
+            subtitle="계정에서 로그아웃합니다."
             onPress={handleLogout}
             isDestructive
           />

@@ -70,25 +70,19 @@ class WeatherAPI {
   static getBaseDateTime() {
     const now = new Date();
 
-    const minute = now.getMinutes();
-    let hour = now.getHours();
-
-    // 현재 시각이 10분 이전이면 이전 시간대 데이터 사용
-    // 예: 14:05 → 13:00 데이터, 14:15 → 14:00 데이터
-    if (minute < 10) {
-      hour = hour - 1;
-      if (hour < 0) {
-        // 자정 이전으로 넘어가는 경우
-        now.setDate(now.getDate() - 1);
-        hour = 23;
-      }
+    const minutes = now.getMinutes();
+    if (minutes >= 30) {
+      now.setHours(now.getHours() + 1);
     }
+    now.setMinutes(0, 0, 0);
 
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
+    const hour = String(now.getHours()).padStart(2, '0');
+
     const baseDate = `${year}${month}${day}`;
-    const baseTime = `${String(hour).padStart(2, '0')}00`;
+    const baseTime = `${hour}00`; // 예: 05시 → "0500", 06시 → "0600"
 
     return { baseDate, baseTime };
   }
