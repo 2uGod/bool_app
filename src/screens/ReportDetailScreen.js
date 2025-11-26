@@ -232,10 +232,6 @@ const ReportDetailScreen = ({ route, navigation }) => {
               </>
             )}
           </View>
-
-          {report.humidity ||
-            report.windDirection ||
-            report.windSpeed !== undefined}
         </View>
 
         {/* 위치 정보 */}
