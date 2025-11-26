@@ -12,7 +12,7 @@
 const WEATHER_API_KEY =
   '4b268ed7fd6465178564984b72bb2dea2f8658d79bede6993bed1aadba63b6e7';
 const WEATHER_API_URL =
-  'http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtNcst';
+  'https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtNcst';
 
 class WeatherAPI {
   /**
