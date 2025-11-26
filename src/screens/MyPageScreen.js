@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  Linking,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthAPI from '../services/AuthAPI';
@@ -155,7 +156,15 @@ const MyPageScreen = ({ navigation }) => {
             icon="🔔"
             title="문의 및 건의사항"
             subtitle="capstonedesign2@mju.ac.kr"
-            onPress={() => Alert.alert('알림', '준비 중인 기능입니다.')}
+            onPress={() => {
+              const email = 'capstonedesign2@mju.ac.kr';
+              const subject = '문의 및 건의사항';
+              const body = '';
+              const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+              Linking.openURL(mailtoUrl).catch(err =>
+                Alert.alert('오류', '메일 앱을 열 수 없습니다.'),
+              );
+            }}
           />
           <MenuItem
             icon="🚪"
