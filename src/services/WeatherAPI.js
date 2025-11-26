@@ -70,10 +70,10 @@ class WeatherAPI {
   static getBaseDateTime() {
     const now = new Date();
 
-    const minutes = now.getMinutes();
-    if (minutes >= 30) {
-      now.setHours(now.getHours() + 1);
-    }
+    // 현재 시각에서 10분을 뺌 (안전을 위해 15분 권장)
+    now.setMinutes(now.getMinutes() - 15);
+
+    // 분/초를 00으로 설정 (정시로 맞춤)
     now.setMinutes(0, 0, 0);
 
     const year = now.getFullYear();
@@ -82,7 +82,7 @@ class WeatherAPI {
     const hour = String(now.getHours()).padStart(2, '0');
 
     const baseDate = `${year}${month}${day}`;
-    const baseTime = `${hour}00`; // 예: 05시 → "0500", 06시 → "0600"
+    const baseTime = `${hour}00`;
 
     return { baseDate, baseTime };
   }
