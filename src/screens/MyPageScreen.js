@@ -10,8 +10,14 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthAPI from '../services/AuthAPI';
+import ShelterMapScreen from './ShelterMapScreen';
 
+<<<<<<< Updated upstream
 const MyPageScreen = ({navigation}) => {
+=======
+const MyPageScreen = ({ navigation }) => {
+  const [showShelterMap, setShowShelterMap] = useState(false);
+>>>>>>> Stashed changes
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -140,11 +146,65 @@ const MyPageScreen = ({navigation}) => {
         />
       </View>
 
+<<<<<<< Updated upstream
       {/* 버전 정보 */}
       <View style={styles.versionContainer}>
         <Text style={styles.versionText}>현재 버전 v1.0.0</Text>
       </View>
     </ScrollView>
+=======
+        {/* 메뉴 리스트 */}
+        <View style={styles.menuList}>
+          <MenuItem
+            icon="👤"
+            title="계정"
+            subtitle="개인정보 설정 및 수정"
+            onPress={() => navigation.navigate('ProfileEdit')}
+          />
+          <MenuItem
+            icon="📍"
+            title="대피소 및 피난처"
+            subtitle="현재 지역 대피소 및 피난처 위치 확인"
+            onPress={() => setShowShelterMap(true)}
+          />
+
+          <MenuItem
+            icon="🔔"
+            title="문의 및 건의사항"
+            subtitle="capstonedesign2@mju.ac.kr"
+            onPress={() => {
+              const email = 'capstonedesign2@mju.ac.kr';
+              const subject = '문의 및 건의사항';
+              const body = '';
+              const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(
+                subject,
+              )}&body=${encodeURIComponent(body)}`;
+              Linking.openURL(mailtoUrl).catch(err =>
+                Alert.alert('오류', '메일 앱을 열 수 없습니다.'),
+              );
+            }}
+          />
+          <MenuItem
+            icon="🚪"
+            title="로그아웃"
+            subtitle="계정에서 로그아웃합니다."
+            onPress={handleLogout}
+            isDestructive
+          />
+        </View>
+
+        {/* 버전 정보 */}
+        <View style={styles.versionContainer}>
+          <Text style={styles.versionText}>현재 버전 ver 1.0.0</Text>
+        </View>
+      </ScrollView>
+      {/* 대피소 지도 모달 */}
+      <ShelterMapScreen
+        visible={showShelterMap}
+        onClose={() => setShowShelterMap(false)}
+      />
+    </View>
+>>>>>>> Stashed changes
   );
 };
 

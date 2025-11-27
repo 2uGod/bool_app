@@ -3,7 +3,12 @@
  * 신고 내역, 계급, 문의 등 사용자 관련 API
  */
 
+<<<<<<< Updated upstream
 import {API_BASE_URL} from '../config/api';
+=======
+import { API_BASE_URL } from '../config/api';
+import WeatherAPI from './WeatherAPI';
+>>>>>>> Stashed changes
 
 class UserAPI {
   /**
@@ -25,12 +30,39 @@ class UserAPI {
         formData.append('latitude', locationData.latitude);
         formData.append('longitude', locationData.longitude);
         formData.append('address', locationData.address || '');
+<<<<<<< Updated upstream
+=======
+
+        // 날씨 정보 조회 및 추가
+        console.log('=============== 날씨 정보 조회 시작 ===============');
+        const weather = await WeatherAPI.getWeather(
+          parseFloat(locationData.latitude),
+          parseFloat(locationData.longitude),
+        );
+        console.log('=============== 날씨 정보 조회 완료 ===============');
+        console.log('WEATHER_DATA:', JSON.stringify(weather));
+
+        // Swagger 규격에 맞춰 camelCase로 전송
+        formData.append('humidity', weather.humidity.toString());
+        formData.append('windDirection', weather.windDirection);
+        formData.append('windSpeed', weather.windSpeed.toString());
+
+        console.log('=============== FormData 날씨 추가 완료 ===============');
+        console.log(
+          'FORMDATA_WEATHER:',
+          JSON.stringify({
+            humidity: weather.humidity.toString(),
+            windDirection: weather.windDirection,
+            windSpeed: weather.windSpeed.toString(),
+          }),
+        );
+>>>>>>> Stashed changes
       }
 
       const response = await fetch(`${API_BASE_URL}/api/reports/detect`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: formData,
       });
@@ -49,20 +81,24 @@ class UserAPI {
         }
       } else {
         const text = await response.text();
-        throw new Error(`서버 오류: ${response.status} - ${text.substring(0, 100)}`);
+        throw new Error(
+          `서버 오류: ${response.status} - ${text.substring(0, 100)}`,
+        );
       }
 
       if (!response.ok) {
-        const errorMsg = data?.error || data?.message || `서버 오류: ${response.status}`;
+        const errorMsg =
+          data?.error || data?.message || `서버 오류: ${response.status}`;
         throw new Error(errorMsg);
       }
 
       console.log('✅ Fire detection and report:', data);
-      return {success: true, result: data};
+      return { success: true, result: data };
     } catch (error) {
       console.error('❌ Detect and report failed:', error);
       
       // 네트워크 연결 오류 체크
+<<<<<<< Updated upstream
       if (error.message.includes('Network request failed') || 
           error.message.includes('Failed to fetch') ||
           error.message.includes('ECONNREFUSED')) {
@@ -73,6 +109,20 @@ class UserAPI {
       }
       
       return {success: false, error: error.message};
+=======
+      if (
+        error.message.includes('Network request failed') ||
+        error.message.includes('Failed to fetch') ||
+        error.message.includes('ECONNREFUSED')
+      ) {
+        return {
+          success: false,
+          error: `서버에 연결할 수 없습니다.\n\n확인 사항:\n1. 백엔드 서버가 실행 중인지 확인 (포트 3000)\n2. 같은 WiFi 네트워크에 연결되어 있는지 확인\n3. IP 주소가 올바른지 확인 (현재: ${API_BASE_URL})`,
+        };
+      }
+
+      return { success: false, error: error.message };
+>>>>>>> Stashed changes
     }
   }
 
@@ -85,7 +135,7 @@ class UserAPI {
       const response = await fetch(`${API_BASE_URL}/api/reports/my`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
@@ -97,21 +147,23 @@ class UserAPI {
       }
 
       console.log('✅ My reports loaded:', data);
-      return {success: true, reports: data.reports};
+      return { success: true, reports: data.reports };
     } catch (error) {
       console.error('❌ Get reports failed:', error);
-      
+
       // 네트워크 연결 오류 체크
-      if (error.message.includes('Network request failed') || 
-          error.message.includes('Failed to fetch') ||
-          error.message.includes('ECONNREFUSED')) {
+      if (
+        error.message.includes('Network request failed') ||
+        error.message.includes('Failed to fetch') ||
+        error.message.includes('ECONNREFUSED')
+      ) {
         return {
-          success: false, 
-          error: `서버 연결 실패\n\n서버가 실행 중인지 확인해주세요.\n(현재 IP: ${API_BASE_URL})`
+          success: false,
+          error: `서버 연결 실패\n\n서버가 실행 중인지 확인해주세요.\n(현재 IP: ${API_BASE_URL})`,
         };
       }
-      
-      return {success: false, error: error.message};
+
+      return { success: false, error: error.message };
     }
   }
 
@@ -125,7 +177,7 @@ class UserAPI {
       const response = await fetch(`${API_BASE_URL}/api/reports/${reportId}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
@@ -137,10 +189,10 @@ class UserAPI {
       }
 
       console.log('✅ Report detail loaded:', data);
-      return {success: true, report: data};
+      return { success: true, report: data };
     } catch (error) {
       console.error('❌ Get report detail failed:', error);
-      return {success: false, error: error.message};
+      return { success: false, error: error.message };
     }
   }
 
@@ -153,7 +205,7 @@ class UserAPI {
       const response = await fetch(`${API_BASE_URL}/api/users/rank`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
@@ -165,10 +217,10 @@ class UserAPI {
       }
 
       console.log('✅ Rank info loaded:', data);
-      return {success: true, rankInfo: data};
+      return { success: true, rankInfo: data };
     } catch (error) {
       console.error('❌ Get rank failed:', error);
-      return {success: false, error: error.message};
+      return { success: false, error: error.message };
     }
   }
 
@@ -191,10 +243,10 @@ class UserAPI {
       }
 
       console.log('✅ All ranks loaded:', data);
-      return {success: true, ranks: data};
+      return { success: true, ranks: data };
     } catch (error) {
       console.error('❌ Get all ranks failed:', error);
-      return {success: false, error: error.message};
+      return { success: false, error: error.message };
     }
   }
 
@@ -203,31 +255,6 @@ class UserAPI {
    * @param {number} latitude
    * @param {number} longitude
    */
-  static async getShelters(latitude, longitude) {
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/shelters?latitude=${latitude}&longitude=${longitude}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || '대피소 조회 실패');
-      }
-
-      console.log('✅ Shelters loaded:', data);
-      return {success: true, shelters: data};
-    } catch (error) {
-      console.error('❌ Get shelters failed:', error);
-      return {success: false, error: error.message};
-    }
-  }
 
   /**
    * 문의사항 등록
@@ -240,10 +267,10 @@ class UserAPI {
       const response = await fetch(`${API_BASE_URL}/api/inquiries`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({title, content}),
+        body: JSON.stringify({ title, content }),
       });
 
       const data = await response.json();
@@ -253,10 +280,10 @@ class UserAPI {
       }
 
       console.log('✅ Inquiry submitted:', data);
-      return {success: true, inquiry: data.inquiry};
+      return { success: true, inquiry: data.inquiry };
     } catch (error) {
       console.error('❌ Submit inquiry failed:', error);
-      return {success: false, error: error.message};
+      return { success: false, error: error.message };
     }
   }
 
@@ -269,7 +296,7 @@ class UserAPI {
       const response = await fetch(`${API_BASE_URL}/api/inquiries`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
@@ -281,10 +308,10 @@ class UserAPI {
       }
 
       console.log('✅ Inquiries loaded:', data);
-      return {success: true, inquiries: data};
+      return { success: true, inquiries: data };
     } catch (error) {
       console.error('❌ Get inquiries failed:', error);
-      return {success: false, error: error.message};
+      return { success: false, error: error.message };
     }
   }
 }
@@ -295,7 +322,6 @@ export const getMyReports = UserAPI.getMyReports.bind(UserAPI);
 export const getReportDetail = UserAPI.getReportDetail.bind(UserAPI);
 export const getMyRank = UserAPI.getMyRank.bind(UserAPI);
 export const getAllRanks = UserAPI.getAllRanks.bind(UserAPI);
-export const getShelters = UserAPI.getShelters.bind(UserAPI);
 export const submitInquiry = UserAPI.submitInquiry.bind(UserAPI);
 export const getMyInquiries = UserAPI.getMyInquiries.bind(UserAPI);
 
