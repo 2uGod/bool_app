@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,24 +7,20 @@ import {
   ActivityIndicator,
   Modal,
   Platform,
-  Alert,
   ScrollView,
 } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import { WebView } from 'react-native-webview';
 import Geolocation from 'react-native-geolocation-service';
 import ShelterAPI from '../services/ShelterAPI';
+
+const KAKAO_API_KEY = 'e09f9f4073488d1ef17cef8618960d76';
 
 const ShelterMapScreen = ({ visible, onClose }) => {
   const [shelters, setShelters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [selectedShelter, setSelectedShelter] = useState(null);
-  const [region, setRegion] = useState({
-    latitude: 37.5665,
-    longitude: 126.978,
-    latitudeDelta: 0.05,
-    longitudeDelta: 0.05,
-  });
+  const webViewRef = useRef(null);
 
   useEffect(() => {
     if (visible) {
@@ -42,12 +38,6 @@ const ShelterMapScreen = ({ visible, onClose }) => {
           const { latitude, longitude } = position.coords;
 
           setCurrentLocation({ latitude, longitude });
-          setRegion({
-            latitude,
-            longitude,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
-          });
 
           // 대피소 데이터 조회
           const result = await ShelterAPI.getShelters(latitude, longitude);
@@ -88,10 +78,12 @@ const ShelterMapScreen = ({ visible, onClose }) => {
         setShelters(getDemoShelters(37.5665, 126.978));
       }
 
+      setCurrentLocation({ latitude: 37.5665, longitude: 126.978 });
       setLoading(false);
     } catch (error) {
       console.error('기본 대피소 조회 실패:', error);
       setShelters(getDemoShelters(37.5665, 126.978));
+      setCurrentLocation({ latitude: 37.5665, longitude: 126.978 });
       setLoading(false);
     }
   };
@@ -152,6 +144,186 @@ const ShelterMapScreen = ({ visible, onClose }) => {
     }
   };
 
+  // 카카오맵 HTML 생성
+  const generateMapHTML = () => {
+    const center = currentLocation || { latitude: 37.5665, longitude: 126.978 };
+    const sheltersJSON = JSON.stringify(shelters);
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>대피소 지도</title>
+    <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_API_KEY}"></script>
+    <style>
+        * { margin: 0; padding: 0; }
+        html, body { width: 100%; height: 100%; overflow: hidden; background-color: #e8f5e9; }
+        #map { width: 100%; height: 100%; }
+        #debug { position: absolute; top: 10px; left: 10px; background: white; padding: 10px; z-index: 1000; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div id="debug">Loading...</div>
+    <div id="map"></div>
+    <script>
+        var debugEl = document.getElementById('debug');
+        debugEl.innerText = 'Script started';
+
+        // 카카오 SDK 로드를 기다립니다
+        function initMap() {
+            try {
+                debugEl.innerText = 'Initializing map...';
+
+                if (typeof kakao === 'undefined') {
+                    debugEl.innerText = 'Kakao SDK not loaded';
+                    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', message: 'Kakao SDK not loaded' }));
+                    return;
+                }
+
+                debugEl.innerText = 'Kakao SDK loaded';
+
+                // 지도 생성
+                var mapContainer = document.getElementById('map');
+                var mapOption = {
+                    center: new kakao.maps.LatLng(${center.latitude}, ${center.longitude}),
+                    level: 5
+                };
+                var map = new kakao.maps.Map(mapContainer, mapOption);
+
+                // 현재 위치 마커
+                var currentPosition = new kakao.maps.LatLng(${center.latitude}, ${center.longitude});
+                var currentMarker = new kakao.maps.Marker({
+                    position: currentPosition,
+                    map: map
+                });
+
+                // 대피소 데이터
+                var shelters = ${sheltersJSON};
+
+                // 마커 이미지 설정
+                var markerColors = {
+                    '실내체육관': '#4CAF50',
+                    '공공시설': '#2196F3',
+                    '임시대피소': '#FF9800'
+                };
+
+                // 대피소 마커 추가
+                shelters.forEach(function(shelter, index) {
+                    var markerPosition = new kakao.maps.LatLng(shelter.latitude, shelter.longitude);
+
+                    // 커스텀 오버레이로 마커 생성 (이모지 사용)
+                    var content = '<div id="marker-' + index + '" style="' +
+                        'width: 40px; height: 40px; ' +
+                        'background-color: ' + (markerColors[shelter.type] || '#F44336') + '; ' +
+                        'border: 3px solid white; ' +
+                        'border-radius: 50%; ' +
+                        'display: flex; ' +
+                        'align-items: center; ' +
+                        'justify-content: center; ' +
+                        'font-size: 20px; ' +
+                        'box-shadow: 0 2px 6px rgba(0,0,0,0.3); ' +
+                        'cursor: pointer;' +
+                        '">🏠</div>';
+
+                    var customOverlay = new kakao.maps.CustomOverlay({
+                        position: markerPosition,
+                        content: content,
+                        yAnchor: 0.5
+                    });
+
+                    customOverlay.setMap(map);
+
+                    // 마커 클릭 이벤트를 DOM 요소에 직접 추가
+                    setTimeout(function() {
+                        var markerElement = document.getElementById('marker-' + index);
+                        if (markerElement) {
+                            markerElement.onclick = function() {
+                                var message = JSON.stringify({
+                                    type: 'markerClick',
+                                    shelter: shelter
+                                });
+                                window.ReactNativeWebView.postMessage(message);
+                            };
+                        }
+                    }, 100);
+                });
+
+                // 지도 클릭 시 상세 정보 닫기
+                kakao.maps.event.addListener(map, 'click', function() {
+                    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'mapClick' }));
+                });
+
+                debugEl.innerText = 'Map loaded successfully';
+                // 3초 후 디버그 정보 숨기기
+                setTimeout(function() {
+                    debugEl.style.display = 'none';
+                }, 3000);
+
+            } catch (error) {
+                debugEl.innerText = 'Error: ' + error.message;
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                    type: 'error',
+                    message: error.message,
+                    stack: error.stack
+                }));
+            }
+        }
+
+        // 카카오 SDK 로드 완료 후 initMap 호출
+        if (window.kakao && window.kakao.maps) {
+            debugEl.innerText = 'Kakao SDK already loaded';
+            kakao.maps.load(function() {
+                initMap();
+            });
+        } else {
+            debugEl.innerText = 'Waiting for Kakao SDK...';
+            // SDK 로드를 체크하는 interval
+            var checkInterval = setInterval(function() {
+                if (window.kakao && window.kakao.maps) {
+                    clearInterval(checkInterval);
+                    debugEl.innerText = 'Kakao SDK detected';
+                    kakao.maps.load(function() {
+                        initMap();
+                    });
+                }
+            }, 100);
+
+            // 10초 후에도 로드 안되면 에러
+            setTimeout(function() {
+                if (typeof kakao === 'undefined') {
+                    clearInterval(checkInterval);
+                    debugEl.innerText = 'Timeout: Kakao SDK failed to load';
+                    window.ReactNativeWebView.postMessage(JSON.stringify({
+                        type: 'error',
+                        message: 'Kakao SDK timeout'
+                    }));
+                }
+            }, 10000);
+        }
+    </script>
+</body>
+</html>
+    `;
+  };
+
+  // WebView에서 메시지 수신
+  const handleWebViewMessage = event => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'markerClick') {
+        setSelectedShelter(data.shelter);
+      } else if (data.type === 'mapClick') {
+        setSelectedShelter(null);
+      } else if (data.type === 'error') {
+        console.error('WebView error:', data.message);
+      }
+    } catch (error) {
+      console.error('WebView message error:', error);
+    }
+  };
+
   return (
     <Modal
       visible={visible}
@@ -175,38 +347,37 @@ const ShelterMapScreen = ({ visible, onClose }) => {
           </View>
         ) : (
           <>
-            {/* 지도 */}
-            <MapView
+            {/* 카카오맵 WebView */}
+            <WebView
+              ref={webViewRef}
+              source={{
+                html: generateMapHTML(),
+                baseUrl: 'https://dapi.kakao.com'
+              }}
+              originWhitelist={['*']}
               style={styles.map}
-              region={region}
-              onRegionChangeComplete={setRegion}
-              showsUserLocation={true}
-              showsMyLocationButton={true}
-            >
-              {/* 대피소 마커 */}
-              {shelters.map(shelter => (
-                <Marker
-                  key={shelter.id}
-                  coordinate={{
-                    latitude: shelter.latitude,
-                    longitude: shelter.longitude,
-                  }}
-                  onPress={() => handleMarkerPress(shelter)}
-                  pinColor={getMarkerColor(shelter.type)}
-                >
-                  <View style={styles.markerContainer}>
-                    <View
-                      style={[
-                        styles.markerInner,
-                        { backgroundColor: getMarkerColor(shelter.type) },
-                      ]}
-                    >
-                      <Text style={styles.markerText}>🏠</Text>
-                    </View>
-                  </View>
-                </Marker>
-              ))}
-            </MapView>
+              onMessage={handleWebViewMessage}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              startInLoadingState={true}
+              mixedContentMode="always"
+              allowsInlineMediaPlayback={true}
+              mediaPlaybackRequiresUserAction={false}
+              allowFileAccess={true}
+              allowUniversalAccessFromFileURLs={true}
+              onError={(syntheticEvent) => {
+                const { nativeEvent } = syntheticEvent;
+                console.error('WebView error:', nativeEvent);
+              }}
+              onLoadEnd={() => {
+                console.log('WebView loaded');
+              }}
+              renderLoading={() => (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#FF6B6B" />
+                </View>
+              )}
+            />
 
             {/* 대피소 목록 */}
             <View style={styles.listContainer}>
@@ -297,30 +468,6 @@ const ShelterMapScreen = ({ visible, onClose }) => {
                       약 {selectedShelter.distance}km
                     </Text>
                   </View>
-
-                  <TouchableOpacity
-                    style={styles.navigateButton}
-                    onPress={() => {
-                      Alert.alert(
-                        '길찾기',
-                        '지도 앱으로 이동하여 길찾기를 시작하시겠습니까?',
-                        [
-                          { text: '취소', style: 'cancel' },
-                          {
-                            text: '확인',
-                            onPress: () => {
-                              Alert.alert(
-                                '안내',
-                                '지도 앱 연동 기능은 준비중입니다.',
-                              );
-                            },
-                          },
-                        ],
-                      );
-                    }}
-                  >
-                    <Text style={styles.navigateButtonText}>🧭 길찾기</Text>
-                  </TouchableOpacity>
                 </View>
               </View>
             )}
@@ -383,26 +530,6 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
-  },
-  markerContainer: {
-    alignItems: 'center',
-  },
-  markerInner: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 5,
-  },
-  markerText: {
-    fontSize: 20,
   },
   listContainer: {
     position: 'absolute',
@@ -542,18 +669,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#333',
     fontWeight: '500',
-  },
-  navigateButton: {
-    backgroundColor: '#4CAF50',
-    borderRadius: 12,
-    paddingVertical: 14,
-    marginTop: 10,
-    alignItems: 'center',
-  },
-  navigateButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
 });
 
