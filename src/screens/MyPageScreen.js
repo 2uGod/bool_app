@@ -12,12 +12,10 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthAPI from '../services/AuthAPI';
-import ShelterMapScreen from './ShelterMapScreen';
 
 const MyPageScreen = ({ navigation }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showShelterMap, setShowShelterMap] = useState(false);
 
   useEffect(() => {
     loadUserData();
@@ -133,9 +131,6 @@ const MyPageScreen = ({ navigation }) => {
             <View style={styles.profileIcon}>
               <Text style={styles.profileEmoji}>👤</Text>
             </View>
-            <View style={styles.editBadge}>
-              <Text style={styles.editBadgeText}>✏️</Text>
-            </View>
           </View>
           <Text style={styles.profileName}>{user?.name || '사용자'} 님</Text>
         </View>
@@ -152,7 +147,7 @@ const MyPageScreen = ({ navigation }) => {
             icon="📍"
             title="대피소 및 피난처"
             subtitle="현재 지역 대피소 및 피난처 위치 확인"
-            onPress={() => setShowShelterMap(true)}
+            onPress={() => navigation.navigate('Shelter')}
           />
           <MenuItem
             icon="🔔"
@@ -162,9 +157,7 @@ const MyPageScreen = ({ navigation }) => {
               const email = 'capstonedesign2@mju.ac.kr';
               const subject = '문의 및 건의사항';
               const body = '';
-              const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(
-                subject,
-              )}&body=${encodeURIComponent(body)}`;
+              const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
               Linking.openURL(mailtoUrl).catch(err =>
                 Alert.alert('오류', '메일 앱을 열 수 없습니다.'),
               );
@@ -184,12 +177,6 @@ const MyPageScreen = ({ navigation }) => {
           <Text style={styles.versionText}>현재 버전 ver 1.0.0</Text>
         </View>
       </ScrollView>
-
-      {/* 대피소 지도 모달 */}
-      <ShelterMapScreen
-        visible={showShelterMap}
-        onClose={() => setShowShelterMap(false)}
-      />
     </View>
   );
 };
@@ -280,22 +267,6 @@ const styles = StyleSheet.create({
   profileEmoji: {
     fontSize: 36,
     color: '#fff',
-  },
-  editBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#E0E0E0',
-  },
-  editBadgeText: {
-    fontSize: 12,
   },
   profileName: {
     fontSize: 16,

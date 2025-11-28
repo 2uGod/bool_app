@@ -252,7 +252,9 @@ const HomeScreen = ({ navigation }) => {
           style={styles.logo}
           resizeMode="contain"
         />
-        <Text style={styles.userNameText}>{userName} 님</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('MyPage')}>
+          <Text style={styles.userNameText}>{userName} 님</Text>
+        </TouchableOpacity>
       </View>
 
       {/* 날씨 정보 카드 */}
