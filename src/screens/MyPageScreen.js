@@ -131,9 +131,6 @@ const MyPageScreen = ({ navigation }) => {
             <View style={styles.profileIcon}>
               <Text style={styles.profileEmoji}>👤</Text>
             </View>
-            <View style={styles.editBadge}>
-              <Text style={styles.editBadgeText}>✏️</Text>
-            </View>
           </View>
           <Text style={styles.profileName}>{user?.name || '사용자'} 님</Text>
         </View>
@@ -150,7 +147,7 @@ const MyPageScreen = ({ navigation }) => {
             icon="📍"
             title="대피소 및 피난처"
             subtitle="현재 지역 대피소 및 피난처 위치 확인"
-            onPress={() => Alert.alert('알림', '준비 중인 기능입니다.')}
+            onPress={() => navigation.navigate('Shelter')}
           />
           <MenuItem
             icon="🔔"

@@ -17,6 +17,7 @@ import ReportDetailScreen from './src/screens/ReportDetailScreen';
 import MyPageScreen from './src/screens/MyPageScreen';
 import ProfileEditScreen from './src/screens/ProfileEditScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import ShelterScreen from './src/screens/ShelterScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -44,6 +45,7 @@ const MyPageIcon = ({ color }: { color: string }) => (
 const MainTabs = () => {
   return (
     <Tab.Navigator
+      initialRouteName="Detection"
       screenOptions={{
         tabBarActiveTintColor: '#FF4500',
         tabBarInactiveTintColor: '#888',
@@ -153,6 +155,7 @@ const App = () => {
           {/* Detail Screens */}
           <Stack.Screen name="ReportDetail" component={ReportDetailScreen} />
           <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
+          <Stack.Screen name="Shelter" component={ShelterScreen} />
 
           {/* Settings Stack */}
           <Stack.Screen
