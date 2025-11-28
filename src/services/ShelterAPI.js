@@ -6,10 +6,12 @@ const PUBLIC_DATA_API_KEY = '34cbc6daffd0aa8823a0113e1093ee967f661ada33889aa9f7a
 const SHELTER_API_URL = 'https://api.odcloud.kr/api/civildefense/v1/shelter';
 
 class ShelterAPI {
-  static async getShelters(latitude, longitude, radius = 5000) {
+  static async getShelters(latitude, longitude, radius = 20000) {
     try {
+      console.log('\n===========================================');
       console.log('🏠 대피소 데이터 조회 (실제 API)');
       console.log(`📍 현재 위치: ${latitude}, ${longitude}`);
+      console.log('===========================================')
 
       // API 파라미터 설정 (페이지당 100개씩 가져오기)
       const params = new URLSearchParams({
@@ -36,8 +38,9 @@ class ShelterAPI {
       }
 
       const data = await response.json();
-      console.log(`📦 전체 대피소 데이터 개수: ${data.totalCount || 0}`);
-      console.log(`📦 현재 페이지 데이터 개수: ${data.currentCount || 0}`);
+      console.log('\n📦 API 응답 데이터:');
+      console.log(`   전체 대피소: ${data.totalCount || 0}개`);
+      console.log(`   받은 데이터: ${data.currentCount || 0}개`);
 
       if (!data.data || data.data.length === 0) {
         console.log('⚠️ 대피소 목록이 비어있습니다.');
@@ -82,7 +85,18 @@ class ShelterAPI {
         .sort((a, b) => a.distance - b.distance)
         .slice(0, 50); // 가까운 50개만 반환
 
-      console.log(`✅ 주변 대피소 ${nearbyShelters.length}개 조회 완료`);
+      console.log('\n✅ 결과:');
+      console.log(`   주변 ${radius/1000}km 내 대피소: ${nearbyShelters.length}개`);
+      console.log('===========================================\n');
+
+      // 0개면 실패로 처리 (ShelterMapScreen에서 데모 데이터 사용)
+      if (nearbyShelters.length === 0) {
+        console.log('⚠️  주변에 대피소가 없습니다. 데모 데이터를 사용합니다.\n');
+        return {
+          success: false,
+          error: '주변에 대피소가 없습니다',
+        };
+      }
 
       return {
         success: true,
