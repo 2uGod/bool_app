@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Platform,
   PermissionsAndroid,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -20,6 +21,10 @@ const HomeScreen = ({ navigation }) => {
   const [loadingWeather, setLoadingWeather] = useState(false);
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
   const [userName, setUserName] = useState('사용자');
+
+  // 버튼 애니메이션
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     requestLocationPermission();
@@ -332,17 +337,50 @@ const HomeScreen = ({ navigation }) => {
         </View>
       ) : null}
 
-      {/* 실물신고 버튼 */}
+      {/* 화재신고 버튼 */}
       <View style={styles.fireButtonContainer}>
-        <TouchableOpacity style={styles.fireButton} onPress={handleFireReport}>
-          <View style={styles.fireButtonInner}>
-            <Text style={styles.fireButtonTitle}>화재 신고</Text>
-            <View style={styles.fireIconContainer}>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPressIn={() => {
+            Animated.spring(scaleAnim, {
+              toValue: 0.96,
+              useNativeDriver: true,
+            }).start();
+          }}
+          onPressOut={() => {
+            Animated.spring(scaleAnim, {
+              toValue: 1,
+              friction: 4,
+              useNativeDriver: true,
+            }).start();
+          }}
+          onPress={handleFireReport}>
+          <Animated.View
+            style={[
+              styles.fireButton,
+              {
+                transform: [{ scale: scaleAnim }],
+              },
+            ]}>
+            <View style={styles.fireButtonInner}>
+              {/* 배경 장식 */}
+              <View style={styles.fireButtonBg} />
+
+              {/* 상단 아이콘 */}
               <Text style={styles.fireEmoji}>🔥</Text>
-              <Text style={styles.mountainEmoji}>⛰️</Text>
-              <Text style={styles.fireEmoji2}>🔥</Text>
+
+              {/* 제목 */}
+              <Text style={styles.fireButtonTitle}>화재 신고</Text>
+
+              {/* 부제목 */}
+              <Text style={styles.fireButtonSubtitle}>긴급 상황 시 즉시 터치</Text>
+
+              {/* 하단 화살표 */}
+              <View style={styles.fireArrowContainer}>
+                <Text style={styles.fireArrow}>▼</Text>
+              </View>
             </View>
-          </View>
+          </Animated.View>
         </TouchableOpacity>
       </View>
     </View>
@@ -449,47 +487,56 @@ const styles = StyleSheet.create({
     paddingBottom: 60,
   },
   fireButton: {
-    width: '70%',
+    width: '75%',
     aspectRatio: 1,
-    maxWidth: 300,
+    maxWidth: 320,
   },
   fireButtonInner: {
     flex: 1,
-    backgroundColor: '#D84A48',
-    justifyContent: 'center',
+    backgroundColor: '#FF4757',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    borderRadius: 35,
-    shadowColor: '#D84A48',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 12,
+    borderRadius: 30,
+    paddingVertical: 30,
+    paddingHorizontal: 20,
+    borderWidth: 5,
+    borderColor: '#FFFFFF',
+    overflow: 'hidden',
+    position: 'relative',
   },
-  fireButtonTitle: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 24,
-    letterSpacing: 2,
-  },
-  fireIconContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  fireButtonBg: {
+    position: 'absolute',
+    top: -50,
+    right: -50,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   fireEmoji: {
-    fontSize: 42,
-    marginHorizontal: 6,
+    fontSize: 60,
+    marginTop: 10,
   },
-  mountainEmoji: {
-    fontSize: 52,
-    marginHorizontal: 6,
+  fireButtonTitle: {
+    fontSize: 38,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 1,
+    marginTop: 10,
   },
-  fireEmoji2: {
-    fontSize: 42,
-    marginHorizontal: 6,
+  fireButtonSubtitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.85)',
+    letterSpacing: 0.5,
+    marginTop: 8,
+  },
+  fireArrowContainer: {
+    marginTop: 10,
+  },
+  fireArrow: {
+    fontSize: 20,
+    color: 'rgba(255, 255, 255, 0.7)',
   },
   weatherInfoCard: {
     backgroundColor: '#fff',

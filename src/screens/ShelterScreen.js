@@ -13,7 +13,6 @@ import {
   Linking,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import Geolocation from 'react-native-geolocation-service';
 import ShelterAPI from '../services/ShelterAPI';
 
