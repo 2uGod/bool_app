@@ -12,10 +12,12 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthAPI from '../services/AuthAPI';
+import ShelterMapScreen from './ShelterMapScreen';
 
 const MyPageScreen = ({ navigation }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showShelterMap, setShowShelterMap] = useState(false);
 
   useEffect(() => {
     loadUserData();
@@ -150,7 +152,7 @@ const MyPageScreen = ({ navigation }) => {
             icon="📍"
             title="대피소 및 피난처"
             subtitle="현재 지역 대피소 및 피난처 위치 확인"
-            onPress={() => Alert.alert('알림', '준비 중인 기능입니다.')}
+            onPress={() => setShowShelterMap(true)}
           />
           <MenuItem
             icon="🔔"
@@ -160,7 +162,9 @@ const MyPageScreen = ({ navigation }) => {
               const email = 'capstonedesign2@mju.ac.kr';
               const subject = '문의 및 건의사항';
               const body = '';
-              const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+              const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(
+                subject,
+              )}&body=${encodeURIComponent(body)}`;
               Linking.openURL(mailtoUrl).catch(err =>
                 Alert.alert('오류', '메일 앱을 열 수 없습니다.'),
               );
@@ -180,6 +184,12 @@ const MyPageScreen = ({ navigation }) => {
           <Text style={styles.versionText}>현재 버전 ver 1.0.0</Text>
         </View>
       </ScrollView>
+
+      {/* 대피소 지도 모달 */}
+      <ShelterMapScreen
+        visible={showShelterMap}
+        onClose={() => setShowShelterMap(false)}
+      />
     </View>
   );
 };
