@@ -1,67 +1,55 @@
 /**
  * Shelter API Service
- * 행정안전부 민방위대피소 API + 카카오 지오코딩
+ * 행정안전부 민방위대피소 API (공공데이터포털)
  */
-import { parseString } from 'react-native-xml2js';
-const PUBLIC_DATA_API_KEY = 'RD9SFQPZ-RD9S-RD9S-RD9S-RD9SFQPZHY';
-const SHELTER_API_URL = 'http://safemap.go.kr/openapi2/IF_0122';
-const KAKAO_API_KEY = 'e09f9f4073488d1ef17cef8618960d76'; // 기존 앱에서 사용
+const PUBLIC_DATA_API_KEY = '34cbc6daffd0aa8823a0113e1093ee967f661ada33889aa9f7a32aeea4eb0778';
+const SHELTER_API_URL = 'https://api.odcloud.kr/api/civildefense/v1/shelter';
 
 class ShelterAPI {
   static async getShelters(latitude, longitude, radius = 5000) {
     try {
+      console.log('🏠 대피소 데이터 조회 (실제 API)');
+      console.log(`📍 현재 위치: ${latitude}, ${longitude}`);
+
+      // API 파라미터 설정 (페이지당 100개씩 가져오기)
       const params = new URLSearchParams({
-        serviceKey: decodeURIComponent(PUBLIC_DATA_API_KEY),
-        pageNo: '1',
-        numOfRows: '100',
-        // type 파라미터 제거 (XML로 받기)
+        serviceKey: PUBLIC_DATA_API_KEY,
+        page: '1',
+        perPage: '1000', // 더 많은 대피소 가져오기
+        returnType: 'JSON',
       });
 
       const url = `${SHELTER_API_URL}?${params.toString()}`;
-      console.log('🏠 대피소 API 호출:', url);
+      console.log('🏠 대피소 API 호출');
 
       const response = await fetch(url, {
         method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
       });
 
       console.log('📡 응답 상태:', response.status);
 
-      // 응답을 텍스트로 받기
-      const responseText = await response.text();
-      console.log(
-        '📡 API 원본 응답 (처음 500자):',
-        responseText.substring(0, 500),
-      );
-
-      // XML을 JSON으로 파싱
-      const data = await parseXMLToJSON(responseText);
-      console.log('📡 파싱된 데이터:', JSON.stringify(data, null, 2));
-
-      // XML 에러 체크
-      if (data.response?.header?.[0]?.resultCode?.[0] !== '00') {
-        const errorMsg =
-          data.response?.header?.[0]?.resultMsg?.[0] || '알 수 없는 오류';
-        throw new Error(`API 오류: ${errorMsg}`);
+      if (!response.ok) {
+        throw new Error(`API 요청 실패: ${response.status}`);
       }
 
-      // 대피소 목록 추출
-      let shelterList = [];
-      if (data.response?.body?.[0]?.items?.[0]?.item) {
-        shelterList = data.response.body[0].items[0].item;
-      }
+      const data = await response.json();
+      console.log(`📦 전체 대피소 데이터 개수: ${data.totalCount || 0}`);
+      console.log(`📦 현재 페이지 데이터 개수: ${data.currentCount || 0}`);
 
-      console.log(`📦 대피소 원본 데이터 개수: ${shelterList.length}`);
-
-      if (shelterList.length === 0) {
+      if (!data.data || data.data.length === 0) {
         console.log('⚠️ 대피소 목록이 비어있습니다.');
         return { success: true, shelters: [] };
       }
 
       // 현재 위치 기준으로 거리 계산 및 필터링
-      const nearbyShelters = shelterList
+      const nearbyShelters = data.data
         .map(shelter => {
-          const shelterLat = parseFloat(shelter.ycord?.[0]);
-          const shelterLon = parseFloat(shelter.xcord?.[0]);
+          // 위도/경도 파싱 (EPSG4326 좌표계 사용)
+          const shelterLat = parseFloat(shelter['위도(EPSG4326)']);
+          const shelterLon = parseFloat(shelter['경도(EPSG4326)']);
 
           if (isNaN(shelterLat) || isNaN(shelterLon)) {
             return null;
@@ -75,25 +63,26 @@ class ShelterAPI {
           );
 
           return {
-            id:
-              shelter.id?.[0] || shelter.rnum?.[0] || Math.random().toString(),
-            name: shelter.vt_acmdfclty_nm?.[0] || '대피소',
-            address: shelter.dtl_adres?.[0] || shelter.rdnmadr_nm?.[0] || '',
+            id: shelter['번호'] || Math.random().toString(),
+            name: shelter['시설명'] || '대피소',
+            address: shelter['도로명전체주소'] || shelter['소재지전체주소'] || '',
             latitude: shelterLat,
             longitude: shelterLon,
-            capacity: parseInt(shelter.xcptn_psvr_nmpr?.[0]) || 0,
-            type: getShelterType(shelter.vt_acmdfclty_nm?.[0]),
+            capacity: parseInt(shelter['최대수용인원']) || 0,
+            type: getShelterType(shelter['시설구분']),
             distance: distance,
-            area: parseFloat(shelter.ar?.[0]) || 0,
-            facilityType: shelter.fclty_se_nm?.[0] || '',
-            managementAgency: shelter.mngps_nm?.[0] || '',
+            area: parseFloat(shelter['면적']) || 0,
+            facilityType: shelter['시설구분'] || '',
+            location: shelter['시설위치'] || '',
+            managementNumber: shelter['관리번호'] || '',
           };
         })
         .filter(shelter => shelter !== null)
-        .filter(shelter => shelter.distance <= radius / 1000)
-        .sort((a, b) => a.distance - b.distance);
+        .filter(shelter => shelter.distance <= radius / 1000) // radius를 km로 변환
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, 50); // 가까운 50개만 반환
 
-      console.log(`✅ 대피소 ${nearbyShelters.length}개 조회 완료`);
+      console.log(`✅ 주변 대피소 ${nearbyShelters.length}개 조회 완료`);
 
       return {
         success: true,

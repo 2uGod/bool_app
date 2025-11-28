@@ -10,7 +10,7 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 import Geolocation from 'react-native-geolocation-service';
 import ShelterAPI from '../services/ShelterAPI';
 
@@ -177,7 +177,6 @@ const ShelterMapScreen = ({ visible, onClose }) => {
           <>
             {/* 지도 */}
             <MapView
-              provider={PROVIDER_GOOGLE}
               style={styles.map}
               region={region}
               onRegionChangeComplete={setRegion}
