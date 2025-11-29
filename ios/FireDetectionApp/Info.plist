@@ -24,6 +24,11 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>kakaomap</string>
+		<string>nmap</string>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
@@ -35,6 +40,27 @@
 		<key>NSExceptionDomains</key>
 		<dict>
 			<key>3.34.148.22</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>api.odcloud.kr</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>dapi.kakao.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>infuser.odcloud.kr</key>
 			<dict>
 				<key>NSExceptionAllowsInsecureHTTPLoads</key>
 				<true/>
@@ -53,35 +79,14 @@
 				<key>NSIncludesSubdomains</key>
 				<true/>
 			</dict>
-			<key>api.odcloud.kr</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-				<key>NSIncludesSubdomains</key>
-				<true/>
-			</dict>
-			<key>infuser.odcloud.kr</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-				<key>NSIncludesSubdomains</key>
-				<true/>
-			</dict>
-			<key>dapi.kakao.com</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-				<key>NSIncludesSubdomains</key>
-				<true/>
-			</dict>
 		</dict>
 	</dict>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>화재 신고 시 위치 정보를 전송하기 위해 위치 접근이 필요합니다</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>화재 신고 시 위치 정보를 전송하기 위해 위치 접근이 필요합니다</string>
 	<key>NSCameraUsageDescription</key>
 	<string>화재 감지를 위해 카메라 접근이 필요합니다</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>화재 신고 시 위치 정보를 전송하기 위해 위치 접근이 필요합니다</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>화재 신고 시 위치 정보를 전송하기 위해 위치 접근이 필요합니다</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>비디오 녹화를 위해 마이크 접근이 필요할 수 있습니다</string>
 	<key>RCTNewArchEnabled</key>
@@ -100,10 +105,5 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
-	<key>LSApplicationQueriesSchemes</key>
-	<array>
-		<string>kakaomap</string>
-		<string>nmap</string>
-	</array>
 </dict>
 </plist>

@@ -31,6 +31,8 @@ const MainCameraScreen = ({ navigation }) => {
   const [detectionResult, setDetectionResult] = useState(null); // 감지 결과 (바운딩 박스용)
 
   const camera = useRef(null);
+  const reportSentRef = useRef(false); // 즉시 반영되는 신고 플래그 (중복 방지용)
+  const isProcessingRef = useRef(false); // 즉시 반영되는 처리 중 플래그 (중복 방지용)
   const devices = useCameraDevices();
   const device = devices.find(d => d.position === 'back');
 
@@ -263,8 +265,17 @@ const MainCameraScreen = ({ navigation }) => {
   };
 
   const detectAndReport = async () => {
-    if (isProcessing || !camera.current || reportSent) return;
+    // 🚨 중복 방지 1단계: 이미 처리 중이거나 신고 완료면 즉시 리턴
+    if (isProcessingRef.current || reportSentRef.current || !camera.current) {
+      console.log('⚠️ 중복 호출 차단:', {
+        isProcessing: isProcessingRef.current,
+        reportSent: reportSentRef.current,
+      });
+      return;
+    }
 
+    // 🚨 함수 시작 즉시 플래그 설정 (다음 호출 완전 차단)
+    isProcessingRef.current = true;
     setIsProcessing(true);
 
     try {
@@ -320,6 +331,14 @@ const MainCameraScreen = ({ navigation }) => {
           smoke: '💨 연기',
         };
 
+        // 🔥 화재 감지 시 즉시 플래그 설정 (중복 방지의 핵심!)
+        if (data.has_fire && data.confidence >= 70) {
+          console.log('🔥 화재 감지! 즉시 플래그 설정하여 중복 방지');
+          reportSentRef.current = true; // 즉시 반영 (다음 호출 차단)
+          setReportSent(true); // UI 업데이트용
+          setIsActive(false); // 촬영 즉시 중지
+        }
+
         // 연기 또는 화재 감지 여부 (화면 표시용)
         const hasFireOrSmoke = data.has_fire || data.has_smoke;
         setFireDetected(hasFireOrSmoke);
@@ -353,13 +372,8 @@ const MainCameraScreen = ({ navigation }) => {
           setDetectionResult(null);
         }
 
-        // 화재 감지 시에만 신고 및 촬영 중지
+        // 화재 감지 시 알림 표시
         if (data.has_fire && data.confidence >= 70) {
-          // 신고 완료 플래그 설정 (중복 신고 방지)
-          setReportSent(true);
-
-          // 촬영 즉시 중지
-          setIsActive(false);
 
           Alert.alert(
             '🔥 화재 신고 완료!',
@@ -424,6 +438,10 @@ const MainCameraScreen = ({ navigation }) => {
       console.error('❌ Error:', error);
       Alert.alert('오류', '화재 감지 중 오류가 발생했습니다');
     } finally {
+      // 화재가 감지되지 않았을 때만 processing 플래그 해제
+      if (!reportSentRef.current) {
+        isProcessingRef.current = false;
+      }
       setIsProcessing(false);
     }
   };
@@ -436,6 +454,8 @@ const MainCameraScreen = ({ navigation }) => {
       setRiskLevel(0);
       setFireType('');
       setReportSent(false); // 신고 플래그 초기화
+      reportSentRef.current = false; // ref도 초기화
+      isProcessingRef.current = false; // processing ref도 초기화
       setDetectionResult(null); // 바운딩 박스 초기화
     }
   };
