@@ -169,7 +169,7 @@ const ReportDetailScreen = ({ route, navigation }) => {
             </View>
             <View style={styles.divider} />
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>위험도</Text>
+              <Text style={styles.infoLabel}>정확도</Text>
               <View style={styles.confidenceContainer}>
                 <View style={styles.confidenceBar}>
                   <View

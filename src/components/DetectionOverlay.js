@@ -109,20 +109,6 @@ const DetectionOverlay = ({detectionResult, isProcessing}) => {
           <Text style={styles.processingText}>분석 중...</Text>
         </View>
       )}
-
-      {/* 카테고리 배지 */}
-      {fireDetected && (
-        <LinearGradient
-          colors={getCategoryColors(category)}
-          style={styles.categoryBadge}
-          start={{x: 0, y: 0}}
-          end={{x: 1, y: 0}}>
-          <Text style={styles.categoryText}>{getCategoryEmoji(category)}</Text>
-          <Text style={styles.categoryLabel}>
-            {getCategoryLabel(category)}
-          </Text>
-        </LinearGradient>
-      )}
     </View>
   );
 };

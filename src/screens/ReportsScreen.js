@@ -126,7 +126,7 @@ const ReportsScreen = ({navigation}) => {
             위치: {item.address || '***'} | 상태: {item.transmission_status === 'success' ? '전송됨' : item.transmission_status === 'failed' ? '실패' : '대기중'}
           </Text>
           <Text style={styles.itemDescription} numberOfLines={2}>
-            위험도 {item.confidence ? `${(typeof item.confidence === 'number' ? item.confidence : parseFloat(item.confidence) || 0).toFixed(1)}%` : '-'} | 습도: {item.humidity ? `${item.humidity}%` : '-'}
+            정확도 {item.confidence ? `${(typeof item.confidence === 'number' ? item.confidence : parseFloat(item.confidence) || 0).toFixed(1)}%` : '-'} | 습도: {item.humidity ? `${item.humidity}%` : '-'}
           </Text>
         </View>
         <Text style={styles.timeText}>{getRelativeTime(item.created_at)}</Text>

@@ -22,7 +22,7 @@ const MainCameraScreen = ({ navigation }) => {
   const [isActive, setIsActive] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [fireDetected, setFireDetected] = useState(false);
-  const [riskLevel, setRiskLevel] = useState(0); // 위험도
+  const [riskLevel, setRiskLevel] = useState(0); // 정확도
   const [fireType, setFireType] = useState(''); // 화재 유형
   const [serverOnline, setServerOnline] = useState(true); // 서버 연결 상태
   const [currentLocation, setCurrentLocation] = useState(null); // 현재 위치
@@ -343,7 +343,7 @@ const MainCameraScreen = ({ navigation }) => {
         const hasFireOrSmoke = data.has_fire || data.has_smoke;
         setFireDetected(hasFireOrSmoke);
 
-        // 위험도
+        // 정확도
         setRiskLevel(Math.round(data.confidence || 0));
 
         // 감지된 유형 (화재 또는 연기)
@@ -377,7 +377,7 @@ const MainCameraScreen = ({ navigation }) => {
 
           Alert.alert(
             '🔥 화재 신고 완료!',
-            `${typeMap[data.status]}\n위험도: ${Math.round(
+            `${typeMap[data.status]}\n정확도: ${Math.round(
               data.confidence,
             )}%\n\n소방서에 신고가 접수되어 촬영이 중지되었습니다.`,
             [
@@ -529,7 +529,7 @@ const MainCameraScreen = ({ navigation }) => {
         )}
       </View>
 
-      {/* 화재 감지 상태 (위험도 + 신고 정보 통합) */}
+      {/* 화재 감지 상태 (정확도 + 신고 정보 통합) */}
       {fireDetected && (
         <View style={styles.alertOverlay}>
           <View
@@ -545,15 +545,12 @@ const MainCameraScreen = ({ navigation }) => {
               {fireType === '💨 연기' ? '연기 감지됨!' : '화재 감지됨!'}
             </Text>
 
-            {/* 위험도 */}
+            {/* 정확도 */}
             <View style={styles.riskInfoContainer}>
               <Text style={styles.riskLabel}>
-                {fireType === '💨 연기' ? '연기 감지 확률' : '예상 화재 위험도'}
+                {fireType === '💨 연기' ? '연기 감지 정확도' : '화재 감지 정확도'}
               </Text>
               <Text style={styles.riskValue}>{riskLevel}%</Text>
-              {fireType && (
-                <Text style={styles.fireTypeInAlert}>{fireType}</Text>
-              )}
             </View>
 
             {/* 연기일 때와 화재일 때 메시지 구분 */}
